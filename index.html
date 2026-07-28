@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <script src="https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/durable-storage.js" data-durable-namespace="github-pages-origin-v1"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Student Shuffle</title>
   <style>
@@ -2698,6 +2699,12 @@
       sharedRosterSaveTimer = null;
       if (!sharedRosterReady || sharedRosterSaveInProgress) return;
 
+      const storageHeaders = window.DurableSharedStorage?.getWriteHeaders?.();
+      if (!storageHeaders) {
+        savedMessage.textContent = "Connect shared storage before editing class rosters";
+        return;
+      }
+
       sharedRosterSaveInProgress = true;
       const snapshot = JSON.stringify(loadClassData());
       try {
@@ -2705,6 +2712,7 @@
           method: "PUT",
           cache: "no-store",
           headers: {
+            ...storageHeaders,
             "Content-Type": "application/json",
             "If-Match": "\"" + sharedRosterRevision + "\""
           },
@@ -2715,6 +2723,10 @@
           savedMessage.textContent = "Another browser changed the class roster. Loading the latest copy.";
           sharedRosterSaveInProgress = false;
           await loadSharedClassData({ announce: true });
+          return;
+        }
+        if (response.status === 401) {
+          savedMessage.textContent = "Connect shared storage before editing class rosters";
           return;
         }
         if (!response.ok) throw new Error("Shared roster save failed");
