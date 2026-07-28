@@ -1280,7 +1280,7 @@
 
     .statusbar {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto auto auto;
       gap: 6px;
       align-items: center;
       padding: 5px 7px;
@@ -2036,6 +2036,7 @@
       }
     }
 </style>
+  <link rel="stylesheet" href="student-shuffle-sync.css">
   <!-- Gymnastics Vault icon -->
   <link rel="icon" type="image/png" href="icon.png?v=3">
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png?v=3">
@@ -2133,6 +2134,7 @@
       <footer class="statusbar">
         <div id="statusMessage" class="status-cell">Ready.</div>
         <div id="savedMessage" class="status-cell">Local roster memory: on</div>
+        <button id="appSyncButton" type="button" class="app-sync-button">Sync &amp; backup</button>
         <button id="soundToggle" type="button" class="sound-toggle" aria-pressed="true" title="Mute sound">
           <span class="icon" aria-hidden="true">S</span>
           <span id="soundLabel">Sound on</span>
@@ -2193,6 +2195,7 @@
     </section>
   </dialog>
 
+  <script src="student-shuffle-storage.js"></script>
   <script>
     const STORAGE_KEY = "student-random-order-roster-v1";
     const CLASS_STORAGE_KEY = "student-random-order-classes-v1";
@@ -2278,21 +2281,38 @@
     let sharedRosterSaveTimer = null;
     let sharedRosterSaveInProgress = false;
 
+    function setCentralInteraction(group, update) {
+      window.StudentShuffleStorage.setEditorState(group, update);
+    }
+
+    function beginAttendanceAction(dirty = false) {
+      setCentralInteraction("attendance", { active: true, dirty });
+    }
+
+    function endAttendanceAction() {
+      setCentralInteraction("attendance", { active: false, dirty: false });
+    }
+
+    function beginSoundAction() {
+      setCentralInteraction("sound", { active: true, dirty: true });
+    }
+
+    function endSoundAction() {
+      setCentralInteraction("sound", { active: false, dirty: false });
+    }
+
     function loadSoundPreference() {
-      try {
-        soundEnabled = localStorage.getItem(SOUND_STORAGE_KEY) !== "off";
-      } catch (error) {
-        soundEnabled = true;
-      }
+      soundEnabled = window.StudentShuffleStorage.loadSound(true);
       renderSoundToggle();
     }
 
     function saveSoundPreference() {
-      try {
-        localStorage.setItem(SOUND_STORAGE_KEY, soundEnabled ? "on" : "off");
-      } catch (error) {
+      const pending = window.StudentShuffleStorage.saveSound(soundEnabled);
+      void pending.catch((error) => {
+        console.error("Could not save the Student Shuffle sound setting.", error);
         savedMessage.textContent = "Sound setting not saved";
-      }
+      });
+      return pending;
     }
 
     function renderSoundToggle() {
@@ -2501,21 +2521,24 @@
     }
 
     function loadHiddenStudents() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(HIDDEN_STORAGE_KEY) || "[]");
-        hiddenStudents = new Set(Array.isArray(saved) ? saved.map(studentKey) : []);
-      } catch (error) {
-        hiddenStudents = new Set();
-      }
+      hiddenStudents = new Set(
+        window.StudentShuffleStorage.loadHiddenStudentKeys([]).map(studentKey)
+      );
       pruneHiddenStudents();
     }
 
     function saveHiddenStudents() {
-      try {
-        localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(Array.from(hiddenStudents)));
-      } catch (error) {
+      const selectedClassKey = classSelect.value ||
+        window.StudentShuffleStorage.loadSelectedClassKey(BUILT_IN_CLASSES[0].key);
+      const pending = window.StudentShuffleStorage.saveAttendance(
+        selectedClassKey,
+        Array.from(hiddenStudents)
+      );
+      void pending.catch((error) => {
+        console.error("Could not save Student Shuffle attendance.", error);
         savedMessage.textContent = "Local roster memory unavailable";
-      }
+      });
+      return pending;
     }
 
     function pruneHiddenStudents() {
@@ -2553,6 +2576,7 @@
         chip.appendChild(mark);
         chip.appendChild(document.createTextNode(name));
         chip.addEventListener("click", () => {
+          beginAttendanceAction(true);
           if (hiddenStudents.has(key)) {
             hiddenStudents.delete(key);
             setStatus(name + " is in today.");
@@ -2563,9 +2587,10 @@
             playSound("attendanceOut");
           }
           order = [];
-          saveHiddenStudents();
+          const pending = saveHiddenStudents();
           renderAttendance();
           renderOrder();
+          void pending.then(endAttendanceAction, endAttendanceAction);
         });
         attendanceList.appendChild(chip);
       });
@@ -2665,8 +2690,20 @@
 
     async function loadSharedClassData({ announce = false } = {}) {
       if (classEditorDialog.open || sharedRosterSaveInProgress || sharedRosterSaveTimer !== null) return;
+      const rosterHeaders = window.StudentShuffleRosterAuth?.getAuthHeaders?.()
+        || window.StudentShuffleRosterAuth?.getWriteHeaders?.();
+      if (!rosterHeaders) {
+        sharedRosterReady = false;
+        setSharedRosterControls(false);
+        savedMessage.textContent = "Connect roster access to load shared classes; using this browser's saved copy";
+        if (announce) setStatus("Shared rosters stay private until roster access is connected.");
+        return;
+      }
       try {
-        const response = await fetch(SHARED_ROSTER_API_URL, { cache: "no-store" });
+        const response = await fetch(SHARED_ROSTER_API_URL, {
+          cache: "no-store",
+          headers: rosterHeaders
+        });
         if (!response.ok) throw new Error("Shared roster request failed");
         const shared = readSharedClassPayload(await response.json());
         if (!shared) throw new Error("Shared roster response is invalid");
@@ -2699,7 +2736,8 @@
       sharedRosterSaveTimer = null;
       if (!sharedRosterReady || sharedRosterSaveInProgress) return;
 
-      const storageHeaders = window.StudentShuffleRosterAuth?.getWriteHeaders?.();
+      const storageHeaders = window.StudentShuffleRosterAuth?.getAuthHeaders?.()
+        || window.StudentShuffleRosterAuth?.getWriteHeaders?.();
       if (!storageHeaders) {
         savedMessage.textContent = "Connect roster editing before changing class rosters";
         return;
@@ -2750,20 +2788,19 @@
     }
 
     function loadSelectedClassKey() {
-      try {
-        const saved = localStorage.getItem(SELECTED_CLASS_KEY);
-        return typeof saved === "string" ? saved : "";
-      } catch (error) {
-        return "";
-      }
+      return window.StudentShuffleStorage.loadSelectedClassKey("");
     }
 
     function saveSelectedClassKey(key) {
-      try {
-        localStorage.setItem(SELECTED_CLASS_KEY, key);
-      } catch (error) {
+      const pending = window.StudentShuffleStorage.saveAttendance(
+        key,
+        Array.from(hiddenStudents)
+      );
+      void pending.catch((error) => {
+        console.error("Could not save the selected Student Shuffle class.", error);
         savedMessage.textContent = "Local roster memory unavailable";
-      }
+      });
+      return pending;
     }
 
     function getClassRoster(key) {
@@ -3004,6 +3041,7 @@
     }
 
     function openNewClass() {
+      beginAttendanceAction(false);
       newClassInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : newClassButton;
       newClassForm.reset();
       newClassState.textContent = "Create the class, then add its students.";
@@ -3019,6 +3057,7 @@
         return;
       }
 
+      beginAttendanceAction(false);
       classEditorInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : editClassButton;
       editingClassName.textContent = selected.name;
       rosterText.value = selected.names.join("\n");
@@ -3099,6 +3138,7 @@
         return;
       }
 
+      beginAttendanceAction(false);
       queueInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : shuffleStudents;
       isSummoning = true;
       updateStats();
@@ -3114,7 +3154,9 @@
 
     quickAddForm.addEventListener("submit", (event) => {
       event.preventDefault();
+      beginAttendanceAction(true);
       addCurrentStudent();
+      window.setTimeout(endAttendanceAction, 0);
     });
     newClassButton.addEventListener("click", openNewClass);
     editClassButton.addEventListener("click", openClassEditor);
@@ -3125,6 +3167,7 @@
     closeWhenClickingBackdrop(newClassDialog);
     closeWhenClickingBackdrop(classEditorDialog);
     newClassDialog.addEventListener("close", () => {
+      endAttendanceAction();
       const focusTarget = newClassInvoker;
       newClassInvoker = null;
       if (focusTarget && document.contains(focusTarget) && !classEditorDialog.open) focusTarget.focus();
@@ -3134,6 +3177,7 @@
         saveActiveClassRoster(getRoster(), { syncTextarea: true });
         classEditorDirty = false;
       }
+      endAttendanceAction();
       const focusTarget = classEditorInvoker;
       classEditorInvoker = null;
       if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
@@ -3163,21 +3207,28 @@
       if (outsideDialog) queueDialog.close();
     });
     queueDialog.addEventListener("close", () => {
+      endAttendanceAction();
       clearReceiptPrintSounds();
       queuePanel.classList.remove("is-receiving", "is-revealing");
       const focusTarget = queueInvoker;
       queueInvoker = null;
       if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
     });
-    classSelect.addEventListener("change", loadSelectedClass);
+    classSelect.addEventListener("change", () => {
+      beginAttendanceAction(true);
+      loadSelectedClass();
+      window.setTimeout(endAttendanceAction, 0);
+    });
 
     rosterText.addEventListener("input", () => {
+      beginAttendanceAction(true);
       classEditorDirty = true;
       saveActiveClassRoster(getRoster());
       classEditorNote.textContent = "Saving for every browser...";
     });
 
     soundToggle.addEventListener("click", () => {
+      beginSoundAction();
       if (soundEnabled) {
         playSound("toggleOff");
         soundEnabled = false;
@@ -3185,8 +3236,39 @@
         soundEnabled = true;
         playSound("toggleOn");
       }
-      saveSoundPreference();
+      const pending = saveSoundPreference();
       renderSoundToggle();
+      void pending.then(endSoundAction, endSoundAction);
+    });
+
+    function applyRemoteAttendanceSettings() {
+      const selectedKey = window.StudentShuffleStorage.loadSelectedClassKey(
+        classSelect.value || BUILT_IN_CLASSES[0].key
+      );
+      const remoteHidden = window.StudentShuffleStorage.loadHiddenStudentKeys([]);
+      renderClassSelect(selectedKey);
+      const selected = getClassRoster(classSelect.value);
+      if (selected) rosterText.value = selected.names.join("\n");
+      const rosterKeys = new Set(getRoster().map(studentKey));
+      hiddenStudents = new Set(remoteHidden.filter((key) => rosterKeys.has(key)));
+      order = [];
+      renderClassPreview();
+      renderAttendance();
+      renderOrder();
+      updateStats();
+      setStatus("Synced class and attendance loaded.");
+    }
+
+    window.addEventListener(window.StudentShuffleStorage.changeEvent, (event) => {
+      if (event.detail?.source === "local") return;
+      if (event.detail?.collection === "sound") {
+        soundEnabled = window.StudentShuffleStorage.loadSound(true);
+        renderSoundToggle();
+        return;
+      }
+      if (event.detail?.collection === "attendance") {
+        applyRemoteAttendanceSettings();
+      }
     });
 
     let savedRoster = "";
@@ -3222,6 +3304,12 @@
     loadSharedClassData({ announce: true });
     window.setInterval(() => loadSharedClassData(), SHARED_SYNC_INTERVAL_MS);
     window.addEventListener("focus", () => loadSharedClassData());
+    window.addEventListener("student-shuffle-roster-authenticated", () => {
+      loadSharedClassData({ announce: true });
+    });
   </script>
+  <script src="https://ryan-app-sync.ryan-666-mp3.chatgpt.site/ryan-app-sync.js"
+    crossorigin="anonymous"></script>
+  <script src="student-shuffle-sync.js"></script>
 </body>
 </html>
