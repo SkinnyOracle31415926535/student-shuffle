@@ -2198,11 +2198,13 @@
     const SELECTED_CLASS_KEY = "student-random-order-selected-class-v1";
     const HIDDEN_STORAGE_KEY = "student-random-order-hidden-students-v1";
     const SOUND_STORAGE_KEY = "student-random-order-sound-v1";
+    const SHARED_ROSTER_API_URL = "https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/api/rosters";
+    const SHARED_SYNC_INTERVAL_MS = 15000;
     const BUILT_IN_CLASSES = [
       {
         key: "builtin:level-3-boys",
         name: "boys level 3",
-        names: ["Fabian Fernandes", "Ethan Grinberg", "Weston Schomaker", "Daniel Shatil", "Ariel Shatil"]
+        names: ["Fabian Fernandes", "Ethan Grinberg", "Weston Schomaker", "Daniel Shatil", "Ariel Shatil", "Logan Huynh"]
       },
       {
         key: "builtin:boys-nga",
@@ -2269,6 +2271,11 @@
     let newClassInvoker = null;
     let classEditorInvoker = null;
     let classEditorDirty = false;
+    let classData = null;
+    let sharedRosterReady = false;
+    let sharedRosterRevision = 0;
+    let sharedRosterSaveTimer = null;
+    let sharedRosterSaveInProgress = false;
 
     function loadSoundPreference() {
       try {
@@ -2593,17 +2600,22 @@
       return normalized;
     }
 
-    function loadClassData() {
+    function normalizeClassData(data) {
+      if (!data || typeof data !== "object" || Array.isArray(data)) return emptyClassData();
+      return {
+        version: 2,
+        custom: normalizeClassMap(data.custom),
+        builtinOverrides: normalizeBuiltinOverrides(data.builtinOverrides)
+      };
+    }
+
+    function loadLocalClassData() {
       try {
         const saved = JSON.parse(localStorage.getItem(CLASS_STORAGE_KEY) || "null");
         if (!saved || typeof saved !== "object" || Array.isArray(saved)) return emptyClassData();
 
         if (Object.prototype.hasOwnProperty.call(saved, "custom") || Object.prototype.hasOwnProperty.call(saved, "builtinOverrides")) {
-          return {
-            version: 2,
-            custom: normalizeClassMap(saved.custom),
-            builtinOverrides: normalizeBuiltinOverrides(saved.builtinOverrides)
-          };
+          return normalizeClassData(saved);
         }
 
         // Older versions stored custom classes as a simple name-to-roster map.
@@ -2613,19 +2625,115 @@
       }
     }
 
-    function saveClassData(data) {
-      const normalized = {
-        version: 2,
-        custom: normalizeClassMap(data.custom),
-        builtinOverrides: normalizeBuiltinOverrides(data.builtinOverrides)
-      };
+    function loadClassData() {
+      return classData || emptyClassData();
+    }
+
+    function cacheClassData(data) {
       try {
-        localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(normalized));
-        savedMessage.textContent = "Class changes saved locally";
+        localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(data));
         return true;
       } catch (error) {
         savedMessage.textContent = "Local roster memory unavailable";
         return false;
+      }
+    }
+
+    function saveClassData(data) {
+      const normalized = normalizeClassData(data);
+      classData = normalized;
+      const cached = cacheClassData(normalized);
+      if (sharedRosterReady) {
+        savedMessage.textContent = "Saving shared class roster...";
+        scheduleSharedClassSave();
+      }
+      return cached;
+    }
+
+    function setSharedRosterControls(disabled) {
+      newClassButton.disabled = disabled;
+      editClassButton.disabled = disabled;
+      studentName.disabled = disabled;
+      addStudent.disabled = disabled;
+    }
+
+    function readSharedClassPayload(payload) {
+      if (!payload || typeof payload !== "object" || !payload.state || !Number.isInteger(payload.revision) || payload.revision < 1) return null;
+      return { classData: normalizeClassData(payload.state), revision: payload.revision };
+    }
+
+    async function loadSharedClassData({ announce = false } = {}) {
+      if (classEditorDialog.open || sharedRosterSaveInProgress || sharedRosterSaveTimer !== null) return;
+      try {
+        const response = await fetch(SHARED_ROSTER_API_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error("Shared roster request failed");
+        const shared = readSharedClassPayload(await response.json());
+        if (!shared) throw new Error("Shared roster response is invalid");
+
+        const sharedDataChanged = !sharedRosterReady || sharedRosterRevision !== shared.revision;
+        classData = shared.classData;
+        sharedRosterRevision = shared.revision;
+        sharedRosterReady = true;
+        cacheClassData(classData);
+        setSharedRosterControls(false);
+        if (sharedDataChanged) {
+          renderClassSelect(classSelect.value || loadSelectedClassKey());
+          loadSelectedClass({ announce: false, resetAttendance: false });
+          savedMessage.textContent = "Shared class rosters synced";
+        }
+        if (announce) setStatus("Shared class rosters loaded.");
+      } catch (error) {
+        setSharedRosterControls(false);
+        savedMessage.textContent = "Shared rosters unavailable; using this browser's saved copy";
+      }
+    }
+
+    function scheduleSharedClassSave() {
+      if (!sharedRosterReady) return;
+      if (sharedRosterSaveTimer !== null) window.clearTimeout(sharedRosterSaveTimer);
+      sharedRosterSaveTimer = window.setTimeout(syncSharedClassData, 350);
+    }
+
+    async function syncSharedClassData() {
+      sharedRosterSaveTimer = null;
+      if (!sharedRosterReady || sharedRosterSaveInProgress) return;
+
+      sharedRosterSaveInProgress = true;
+      const snapshot = JSON.stringify(loadClassData());
+      try {
+        const response = await fetch(SHARED_ROSTER_API_URL, {
+          method: "PUT",
+          cache: "no-store",
+          headers: {
+            "Content-Type": "application/json",
+            "If-Match": "\"" + sharedRosterRevision + "\""
+          },
+          body: snapshot
+        });
+
+        if (response.status === 412) {
+          savedMessage.textContent = "Another browser changed the class roster. Loading the latest copy.";
+          sharedRosterSaveInProgress = false;
+          await loadSharedClassData({ announce: true });
+          return;
+        }
+        if (!response.ok) throw new Error("Shared roster save failed");
+        const shared = readSharedClassPayload(await response.json());
+        if (!shared) throw new Error("Shared roster save response is invalid");
+        sharedRosterRevision = shared.revision;
+        if (snapshot === JSON.stringify(loadClassData())) {
+          classData = shared.classData;
+          cacheClassData(classData);
+        } else {
+          scheduleSharedClassSave();
+        }
+        savedMessage.textContent = "Class changes saved for every browser";
+        if (classEditorDialog.open) classEditorNote.textContent = "Saved on every browser.";
+      } catch (error) {
+        savedMessage.textContent = "Shared save failed; retrying when the page reconnects";
+        sharedRosterSaveTimer = window.setTimeout(syncSharedClassData, 5000);
+      } finally {
+        sharedRosterSaveInProgress = false;
       }
     }
 
@@ -2751,7 +2859,7 @@
     function saveToStorage(value = rosterText.value) {
       try {
         localStorage.setItem(STORAGE_KEY, value);
-        if (!classEditorDialog.open) savedMessage.textContent = "Roster saved locally";
+        if (!classEditorDialog.open && !sharedRosterReady) savedMessage.textContent = "Roster saved locally";
       } catch (error) {
         savedMessage.textContent = "Local roster memory unavailable";
       }
@@ -3054,7 +3162,7 @@
     rosterText.addEventListener("input", () => {
       classEditorDirty = true;
       saveActiveClassRoster(getRoster());
-      classEditorNote.textContent = "Saved automatically.";
+      classEditorNote.textContent = "Saving for every browser...";
     });
 
     soundToggle.addEventListener("click", () => {
@@ -3075,6 +3183,8 @@
     } catch (error) {
       savedMessage.textContent = "Local roster memory unavailable";
     }
+    classData = loadLocalClassData();
+    setSharedRosterControls(true);
     const rememberedClassKey = loadSelectedClassKey();
     renderClassSelect(rememberedClassKey);
     const restoredSelectedClass = rememberedClassKey && classSelect.value === rememberedClassKey;
@@ -3096,7 +3206,10 @@
     }
     renderAttendance();
     renderOrder();
-    setStatus("Summon rotation");
+    setStatus("Loading shared class rosters...");
+    loadSharedClassData({ announce: true });
+    window.setInterval(() => loadSharedClassData(), SHARED_SYNC_INTERVAL_MS);
+    window.addEventListener("focus", () => loadSharedClassData());
   </script>
 </body>
 </html>
