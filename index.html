@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <script src="https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/durable-storage.js" data-durable-namespace="github-pages-origin-v1"></script>
+  <script src="https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/roster-auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Student Shuffle</title>
   <style>
@@ -2699,9 +2699,9 @@
       sharedRosterSaveTimer = null;
       if (!sharedRosterReady || sharedRosterSaveInProgress) return;
 
-      const storageHeaders = window.DurableSharedStorage?.getWriteHeaders?.();
+      const storageHeaders = window.StudentShuffleRosterAuth?.getWriteHeaders?.();
       if (!storageHeaders) {
-        savedMessage.textContent = "Connect shared storage before editing class rosters";
+        savedMessage.textContent = "Connect roster editing before changing class rosters";
         return;
       }
 
@@ -2726,7 +2726,7 @@
           return;
         }
         if (response.status === 401) {
-          savedMessage.textContent = "Connect shared storage before editing class rosters";
+          savedMessage.textContent = "Connect roster editing before changing class rosters";
           return;
         }
         if (!response.ok) throw new Error("Shared roster save failed");
