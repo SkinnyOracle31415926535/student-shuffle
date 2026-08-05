@@ -3315,6 +3315,7 @@
   </script>
   <script src="semantic-app-sync.js"></script>
   <script src="temporary-data-transfer.js"></script>
+  <script src="legacy-v3-recovery.js"></script>
   <script>
     window.TemporaryDataTransfer.install({
       appId: "student-shuffle",
@@ -3332,6 +3333,17 @@
       appId: "student-shuffle",
       appName: "Student Shuffle",
       storage: window.StudentShuffleStorage
+    });
+    window.LegacyV3Recovery.install({
+      appId: "student-shuffle",
+      appName: "Student Shuffle",
+      storageKeys: [
+        "student-random-order-roster-v1",
+        "student-random-order-classes-v1",
+        "student-random-order-selected-class-v1",
+        "student-random-order-hidden-students-v1",
+        "student-random-order-sound-v1"
+      ]
     });
   </script>
 </body>
