@@ -1,0 +1,12 @@
+{
+  "name": "Student Shuffle",
+  "short_name": "Shuffle",
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#06381f",
+  "theme_color": "#128a4c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

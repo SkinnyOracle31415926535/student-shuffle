@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <script src="https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/roster-auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#128a4c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Student Shuffle">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <title>Student Shuffle</title>
   <style>
     * {
@@ -3305,6 +3311,20 @@
     window.addEventListener("focus", () => loadSharedClassData());
     window.addEventListener("student-shuffle-roster-authenticated", () => {
       loadSharedClassData({ announce: true });
+    });
+  </script>
+  <script src="temporary-data-transfer.js"></script>
+  <script>
+    window.TemporaryDataTransfer.install({
+      appId: "student-shuffle",
+      appName: "Student Shuffle",
+      storageKeys: [
+        "student-random-order-roster-v1",
+        "student-random-order-classes-v1",
+        "student-random-order-selected-class-v1",
+        "student-random-order-hidden-students-v1",
+        "student-random-order-sound-v1"
+      ]
     });
   </script>
 </body>
