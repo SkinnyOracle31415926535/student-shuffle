@@ -3313,6 +3313,7 @@
       loadSharedClassData({ announce: true });
     });
   </script>
+  <script src="semantic-app-sync.js"></script>
   <script src="temporary-data-transfer.js"></script>
   <script>
     window.TemporaryDataTransfer.install({
@@ -3324,7 +3325,13 @@
         "student-random-order-selected-class-v1",
         "student-random-order-hidden-students-v1",
         "student-random-order-sound-v1"
-      ]
+      ],
+      disableRawSync: true
+    });
+    window.SemanticAppSync.install({
+      appId: "student-shuffle",
+      appName: "Student Shuffle",
+      storage: window.StudentShuffleStorage
     });
   </script>
 </body>
