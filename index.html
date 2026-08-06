@@ -892,6 +892,46 @@
       line-height: 1;
     }
 
+    .queue-close {
+      --hold-progress: 0;
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .queue-close::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, #70e37d, #fff3a5 68%, #b6ff88);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -1px 0 rgba(3, 35, 19, 0.22);
+      transform: scaleX(var(--hold-progress));
+      transform-origin: left center;
+    }
+
+    .queue-close-symbol {
+      position: relative;
+      z-index: 1;
+    }
+
+    .queue-close.is-holding {
+      color: #032313;
+      box-shadow: 1px 1px 0 #032313, 0 0 7px rgba(112, 227, 125, 0.72);
+    }
+
+    .queue-close.is-ready-to-close {
+      color: #032313;
+      box-shadow: 1px 1px 0 #032313, inset 0 0 0 1px rgba(255, 255, 255, 0.78), 0 0 9px rgba(255, 227, 109, 0.86);
+    }
+
+    .queue-close:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
     .class-dialog {
       width: min(500px, calc(100vw - 24px));
       max-width: calc(100vw - 24px);
@@ -2027,6 +2067,20 @@
       z-index: 1;
     }
 
+    .queue-dialog .order-name-text {
+      flex: 1 1 12ch;
+      color: var(--deep);
+      font-family: "Courier New", monospace;
+      font-size: clamp(24px, 5.4vw, 36px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 0.015em;
+      text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.9),
+        1px 2px 0 rgba(3, 35, 19, 0.38),
+        0 0 5px rgba(112, 227, 125, 0.38);
+    }
+
     @keyframes orderPlasticGloss {
       0%, 16% { transform: translateX(-118%); opacity: 0; }
       36% { opacity: 0.8; }
@@ -2151,7 +2205,10 @@
     <section class="order-panel">
       <div class="queue-dialog-titlebar">
         <h2 id="queueDialogTitle" class="queue-dialog-title" tabindex="-1">Shuffled Order</h2>
-        <button id="closeQueue" type="button" class="queue-close" aria-label="Close shuffled order" title="Close shuffled order">×</button>
+        <button id="closeQueue" type="button" class="queue-close" aria-label="Hold for 0.7 seconds, then release to close shuffled order" aria-describedby="queueCloseHelp" title="Press and hold to close">
+          <span class="queue-close-symbol" aria-hidden="true">×</span>
+        </button>
+        <span id="queueCloseHelp" class="screen-reader-only">Hold the Close button for 0.7 seconds and release it to close. Press Escape to close immediately.</span>
       </div>
       <div class="order-lock-strip">
         <span>ORDER LOCKED</span>
@@ -2268,6 +2325,7 @@
     const classRosterState = document.getElementById("classRosterState");
 
     const SUMMON_DURATION_MS = 1350;
+    const QUEUE_CLOSE_HOLD_MS = 700;
     let order = [];
     let hiddenStudents = new Set();
     let audioContext = null;
@@ -2275,6 +2333,8 @@
     let isSummoning = false;
     let queueRevealTimer = null;
     let queueInvoker = null;
+    let queueCloseHold = null;
+    let queueCloseKeyboardClickBlockUntil = 0;
     let receiptSoundTimers = [];
     let newClassInvoker = null;
     let classEditorInvoker = null;
@@ -2973,6 +3033,7 @@
     }
 
     function openQueueDialog() {
+      resetQueueCloseHold();
       if (queueRevealTimer !== null) {
         window.clearTimeout(queueRevealTimer);
         queueRevealTimer = null;
@@ -2991,6 +3052,74 @@
       void queuePanel.offsetWidth;
       queuePanel.classList.add("is-receiving", "is-revealing");
       queueDialogTitle.focus();
+    }
+
+    function resetQueueCloseHold() {
+      if (queueCloseHold) {
+        window.clearTimeout(queueCloseHold.timer);
+        if (queueCloseHold.frame !== null) {
+          window.cancelAnimationFrame(queueCloseHold.frame);
+        }
+      }
+      queueCloseHold = null;
+      closeQueue.classList.remove("is-holding", "is-ready-to-close");
+      closeQueue.style.removeProperty("--hold-progress");
+      closeQueue.setAttribute("aria-label", "Hold for 0.7 seconds, then release to close shuffled order");
+    }
+
+    function updateQueueCloseHoldProgress(hold, timestamp) {
+      if (queueCloseHold !== hold) return;
+      const progress = Math.min((timestamp - hold.startedAt) / QUEUE_CLOSE_HOLD_MS, 1);
+      closeQueue.style.setProperty("--hold-progress", String(progress));
+      if (progress < 1 && !hold.ready) {
+        hold.frame = window.requestAnimationFrame((nextTimestamp) => updateQueueCloseHoldProgress(hold, nextTimestamp));
+      } else {
+        hold.frame = null;
+      }
+    }
+
+    function beginQueueCloseHold({ pointerId = null, key = null } = {}) {
+      if (!queueDialog.open || queueCloseHold) return false;
+
+      const hold = {
+        pointerId,
+        key,
+        startedAt: window.performance.now(),
+        timer: null,
+        frame: null,
+        ready: false
+      };
+      queueCloseHold = hold;
+      closeQueue.classList.add("is-holding");
+      closeQueue.setAttribute("aria-label", "Keep holding, then release to close shuffled order");
+
+      if (prefersReducedMotion()) {
+        closeQueue.style.setProperty("--hold-progress", "1");
+      } else {
+        hold.frame = window.requestAnimationFrame((timestamp) => updateQueueCloseHoldProgress(hold, timestamp));
+      }
+
+      hold.timer = window.setTimeout(() => {
+        if (queueCloseHold !== hold) return;
+        hold.ready = true;
+        closeQueue.style.setProperty("--hold-progress", "1");
+        closeQueue.classList.add("is-ready-to-close");
+        closeQueue.setAttribute("aria-label", "Release to close shuffled order");
+      }, QUEUE_CLOSE_HOLD_MS);
+      return true;
+    }
+
+    function pointIsInsideQueueClose(clientX, clientY) {
+      const bounds = closeQueue.getBoundingClientRect();
+      return clientX >= bounds.left && clientX <= bounds.right && clientY >= bounds.top && clientY <= bounds.bottom;
+    }
+
+    function releaseQueueCloseHold({ shouldClose = false } = {}) {
+      const holdWasReady = Boolean(queueCloseHold && queueCloseHold.ready);
+      resetQueueCloseHold();
+      if (shouldClose && holdWasReady && queueDialog.open) {
+        queueDialog.close();
+      }
     }
 
     function scheduleQueueDialog() {
@@ -3203,14 +3332,45 @@
         queuePanel.classList.remove("is-receiving");
       }
     });
-    closeQueue.addEventListener("click", () => queueDialog.close());
-    queueDialog.addEventListener("click", (event) => {
-      if (event.target !== queueDialog) return;
-      const bounds = queueDialog.getBoundingClientRect();
-      const outsideDialog = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
-      if (outsideDialog) queueDialog.close();
+    closeQueue.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      if (beginQueueCloseHold({ pointerId: event.pointerId })) {
+        closeQueue.setPointerCapture(event.pointerId);
+      }
     });
+    closeQueue.addEventListener("pointermove", (event) => {
+      if (!queueCloseHold || queueCloseHold.pointerId !== event.pointerId) return;
+      if (!pointIsInsideQueueClose(event.clientX, event.clientY)) {
+        resetQueueCloseHold();
+      }
+    });
+    closeQueue.addEventListener("pointerup", (event) => {
+      if (!queueCloseHold || queueCloseHold.pointerId !== event.pointerId) return;
+      releaseQueueCloseHold({ shouldClose: pointIsInsideQueueClose(event.clientX, event.clientY) });
+    });
+    closeQueue.addEventListener("pointercancel", resetQueueCloseHold);
+    closeQueue.addEventListener("lostpointercapture", resetQueueCloseHold);
+    closeQueue.addEventListener("keydown", (event) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      if (!event.repeat) beginQueueCloseHold({ key: event.key });
+    });
+    closeQueue.addEventListener("keyup", (event) => {
+      if (!queueCloseHold || queueCloseHold.key !== event.key) return;
+      if (event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      queueCloseKeyboardClickBlockUntil = window.performance.now() + 250;
+      releaseQueueCloseHold({ shouldClose: true });
+    });
+    closeQueue.addEventListener("click", (event) => {
+      if (event.detail !== 0 || !queueDialog.open) return;
+      if (window.performance.now() < queueCloseKeyboardClickBlockUntil) return;
+      queueDialog.close();
+    });
+    closeQueue.addEventListener("blur", resetQueueCloseHold);
     queueDialog.addEventListener("close", () => {
+      resetQueueCloseHold();
       endAttendanceAction();
       clearReceiptPrintSounds();
       queuePanel.classList.remove("is-receiving", "is-revealing");
@@ -3313,36 +3473,11 @@
     });
   </script>
   <script src="semantic-app-sync.js"></script>
-  <script src="temporary-data-transfer.js"></script>
-  <script src="legacy-v3-recovery.js"></script>
   <script>
-    window.TemporaryDataTransfer.install({
-      appId: "student-shuffle",
-      appName: "Student Shuffle",
-      storageKeys: [
-        "student-random-order-roster-v1",
-        "student-random-order-classes-v1",
-        "student-random-order-selected-class-v1",
-        "student-random-order-hidden-students-v1",
-        "student-random-order-sound-v1"
-      ],
-      disableRawSync: true
-    });
     window.SemanticAppSync.install({
       appId: "student-shuffle",
       appName: "Student Shuffle",
       storage: window.StudentShuffleStorage
-    });
-    window.LegacyV3Recovery.install({
-      appId: "student-shuffle",
-      appName: "Student Shuffle",
-      storageKeys: [
-        "student-random-order-roster-v1",
-        "student-random-order-classes-v1",
-        "student-random-order-selected-class-v1",
-        "student-random-order-hidden-students-v1",
-        "student-random-order-sound-v1"
-      ]
     });
   </script>
   <script src="transfer-theme.js"></script>
