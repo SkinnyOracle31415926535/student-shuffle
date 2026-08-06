@@ -2059,7 +2059,15 @@
       background: linear-gradient(112deg, transparent 28%, rgba(255, 255, 255, 0.12) 36%, rgba(255, 255, 255, 0.72) 46%, rgba(255, 255, 255, 0.34) 54%, transparent 66%);
       mix-blend-mode: screen;
       transform: translateX(-118%);
-      animation: orderPlasticGloss 4.2s cubic-bezier(0.32, 0.08, 0.3, 0.96) infinite;
+      animation: orderPlasticGloss 2.8s cubic-bezier(0.32, 0.08, 0.3, 0.96) infinite;
+    }
+
+    .order-list li:nth-child(3n + 2)::after {
+      animation-delay: -0.93s;
+    }
+
+    .order-list li:nth-child(3n)::after {
+      animation-delay: -1.86s;
     }
 
     .order-list li.active {
@@ -2077,6 +2085,31 @@
     .order-name {
       position: relative;
       z-index: 1;
+    }
+
+    .order-name::after {
+      content: "";
+      position: absolute;
+      inset: 2px 3px;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 14% 30%, rgba(255, 255, 255, 0.96) 0 1px, rgba(255, 255, 255, 0.32) 1.5px, transparent 3px),
+        radial-gradient(circle at 72% 64%, rgba(255, 244, 156, 0.96) 0 1.3px, rgba(255, 255, 255, 0.28) 2px, transparent 3.8px),
+        radial-gradient(circle at 92% 22%, rgba(255, 255, 255, 0.9) 0 1px, rgba(255, 227, 109, 0.24) 1.7px, transparent 3.2px);
+      background-position: 0 0, 32px 9px, 18px 20px;
+      background-size: 92px 64px, 124px 74px, 156px 58px;
+      mix-blend-mode: screen;
+      opacity: 0.14;
+      animation: orderNameSparkles 3.4s steps(5, end) infinite;
+    }
+
+    .order-list li:nth-child(3n + 2) .order-name::after {
+      animation-delay: -1.1s;
+    }
+
+    .order-list li:nth-child(3n) .order-name::after {
+      animation-delay: -2.2s;
     }
 
     .queue-dialog .order-name-text {
@@ -2100,11 +2133,24 @@
       88%, 100% { transform: translateX(118%); opacity: 0; }
     }
 
+    @keyframes orderNameSparkles {
+      0%, 100% { opacity: 0.12; transform: translateX(-2px) scale(0.94); }
+      20% { opacity: 0.64; transform: translateX(1px) scale(1.04); }
+      46% { opacity: 0.24; transform: translateX(0) scale(0.98); }
+      68% { opacity: 0.56; transform: translateX(2px) scale(1.02); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .order-list li::after {
         animation: none;
         transform: translateX(0);
         opacity: 0.16;
+      }
+
+      .order-name::after {
+        animation: none;
+        opacity: 0.18;
+        transform: none;
       }
     }
 </style>
