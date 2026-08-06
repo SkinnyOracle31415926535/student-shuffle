@@ -2128,10 +2128,22 @@
     }
 
     @keyframes orderNameSparkles {
-      0%, 100% { opacity: 0.28; transform: translateX(-2px) scale(0.94); }
-      20% { opacity: 0.92; transform: translateX(1px) scale(1.04); }
-      46% { opacity: 0.45; transform: translateX(0) scale(0.98); }
-      68% { opacity: 0.82; transform: translateX(2px) scale(1.02); }
+      0%, 100% {
+        opacity: 0.28;
+        background-position: 0 0, 32px 9px, 18px 20px, 48px 28px;
+      }
+      20% {
+        opacity: 0.92;
+        background-position: 7px -5px, 23px 17px, 30px 11px, 39px 35px;
+      }
+      46% {
+        opacity: 0.45;
+        background-position: -6px 4px, 40px 3px, 12px 28px, 56px 22px;
+      }
+      68% {
+        opacity: 0.82;
+        background-position: 4px 7px, 27px 15px, 25px 14px, 44px 32px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
