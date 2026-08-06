@@ -2077,13 +2077,15 @@
     .order-name {
       position: relative;
       z-index: 1;
+      isolation: isolate;
+      overflow: hidden;
     }
 
     .order-name::before,
     .order-name::after {
       content: "✦";
       position: absolute;
-      z-index: 1;
+      z-index: 0;
       pointer-events: none;
       color: #fff6bf;
       font-family: "Courier New", monospace;
@@ -2122,6 +2124,8 @@
     }
 
     .queue-dialog .order-name-text {
+      position: relative;
+      z-index: 1;
       flex: 1 1 12ch;
       color: var(--deep);
       font-family: "Courier New", monospace;
@@ -2135,6 +2139,11 @@
         0 0 5px rgba(112, 227, 125, 0.38);
     }
 
+    .queue-dialog .up-first-badge {
+      position: relative;
+      z-index: 1;
+    }
+
     @keyframes orderPlasticGloss {
       0%, 16% { transform: translateX(-118%); opacity: 0; }
       36% { opacity: 0.54; }
@@ -2145,38 +2154,38 @@
     @keyframes orderStarTwinkle {
       0%, 100% {
         opacity: 0.42;
-        transform: scale(0.68);
+        transform: translate(0, 0) scale(0.68);
       }
       24% {
         opacity: 1;
-        transform: scale(1.24);
+        transform: translate(var(--sparkle-one-drift-a-x, 7px), var(--sparkle-one-drift-a-y, -5px)) scale(1.24);
       }
       56% {
         opacity: 0.56;
-        transform: scale(0.82);
+        transform: translate(var(--sparkle-one-drift-b-x, -5px), var(--sparkle-one-drift-b-y, 6px)) scale(0.82);
       }
       78% {
         opacity: 0.94;
-        transform: scale(1.08);
+        transform: translate(var(--sparkle-one-drift-c-x, 4px), var(--sparkle-one-drift-c-y, 3px)) scale(1.08);
       }
     }
 
     @keyframes orderStarTwinkleAlt {
       0%, 100% {
         opacity: 0.36;
-        transform: scale(0.7);
+        transform: translate(0, 0) scale(0.7);
       }
       28% {
         opacity: 0.98;
-        transform: scale(1.2);
+        transform: translate(var(--sparkle-two-drift-a-x, -6px), var(--sparkle-two-drift-a-y, 5px)) scale(1.2);
       }
       62% {
         opacity: 0.48;
-        transform: scale(0.8);
+        transform: translate(var(--sparkle-two-drift-b-x, 5px), var(--sparkle-two-drift-b-y, -6px)) scale(0.8);
       }
       82% {
         opacity: 0.9;
-        transform: scale(1.1);
+        transform: translate(var(--sparkle-two-drift-c-x, -4px), var(--sparkle-two-drift-c-y, -3px)) scale(1.1);
       }
     }
 
@@ -3095,18 +3104,31 @@
     function setOrderSparkleVariation(label) {
       const randomBetween = (min, max) => min + Math.random() * (max - min);
       const randomPercent = (min, max) => `${randomBetween(min, max).toFixed(1)}%`;
+      const randomPixels = (min, max) => `${randomBetween(min, max).toFixed(1)}px`;
       const firstDuration = randomBetween(2.9, 5.1);
       const secondDuration = randomBetween(3.3, 5.8);
 
-      // Keep the two prism stars balanced across the name while letting every render feel different.
+      // Keep the two prism stars balanced across the name while giving every render a different little drift path.
       label.style.setProperty("--sparkle-one-x", randomPercent(3, 48));
       label.style.setProperty("--sparkle-one-y", randomPercent(0, 28));
       label.style.setProperty("--sparkle-one-duration", `${firstDuration.toFixed(2)}s`);
       label.style.setProperty("--sparkle-one-delay", `-${randomBetween(0, firstDuration).toFixed(2)}s`);
+      label.style.setProperty("--sparkle-one-drift-a-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-one-drift-a-y", randomPixels(-8, 8));
+      label.style.setProperty("--sparkle-one-drift-b-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-one-drift-b-y", randomPixels(-8, 8));
+      label.style.setProperty("--sparkle-one-drift-c-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-one-drift-c-y", randomPixels(-8, 8));
       label.style.setProperty("--sparkle-two-x", randomPercent(3, 48));
       label.style.setProperty("--sparkle-two-y", randomPercent(0, 28));
       label.style.setProperty("--sparkle-two-duration", `${secondDuration.toFixed(2)}s`);
       label.style.setProperty("--sparkle-two-delay", `-${randomBetween(0, secondDuration).toFixed(2)}s`);
+      label.style.setProperty("--sparkle-two-drift-a-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-two-drift-a-y", randomPixels(-8, 8));
+      label.style.setProperty("--sparkle-two-drift-b-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-two-drift-b-y", randomPixels(-8, 8));
+      label.style.setProperty("--sparkle-two-drift-c-x", randomPixels(-11, 11));
+      label.style.setProperty("--sparkle-two-drift-c-y", randomPixels(-8, 8));
     }
 
     function renderOrder() {
