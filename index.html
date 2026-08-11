@@ -2476,6 +2476,7 @@
     let classEditorDirty = false;
     let classData = null;
     let officialRoster = null;
+    let lastRosterHubError = "";
     let rosterHubInvoker = null;
     let rosterHubInvitePending = false;
 
@@ -3121,21 +3122,24 @@
       try {
         const result = await window.StudentShuffleRosterHub.loadOfficialRoster();
         if (!result.snapshot) {
+          lastRosterHubError = "The first official roster has not published yet.";
           savedMessage.textContent = "Roster Hub is connected; the first official roster has not published yet";
           if (announce) setStatus("Waiting for the first official roster publish.");
           return false;
         }
+        lastRosterHubError = "";
         applyOfficialRosterSnapshot(result.snapshot);
         savedMessage.textContent = "Official roster revision " + result.snapshot.revision + " loaded";
         if (announce) setStatus(result.changed ? "Official roster updated." : "Official roster is current.");
         return true;
       } catch (error) {
+        lastRosterHubError = error instanceof Error ? error.message : "Official roster could not be refreshed.";
         const cached = window.StudentShuffleRosterHub.loadCachedOfficialRoster();
         if (cached && !officialRoster) applyOfficialRosterSnapshot(cached);
         savedMessage.textContent = cached
           ? "Roster Hub unavailable; using this device's last official roster"
           : "Roster Hub is not connected on this device";
-        if (announce) setStatus("Official roster could not be refreshed.");
+        if (announce) setStatus(lastRosterHubError);
         return false;
       }
     }
@@ -3182,7 +3186,7 @@
         const loaded = await refreshOfficialRoster({ announce: true });
         rosterHubNote.textContent = loaded
           ? "Official roster is connected on this device."
-          : "Signed in, waiting for the first official roster publish.";
+          : lastRosterHubError || "Signed in, waiting for the first official roster publish.";
       } catch (error) {
         rosterHubNote.textContent = error instanceof Error ? error.message : "Roster Hub could not be connected.";
       }
@@ -3193,7 +3197,7 @@
       const loaded = await refreshOfficialRoster({ announce: true });
       rosterHubNote.textContent = loaded
         ? "Official roster is current on this device."
-        : "Roster refresh did not complete. Check your sign-in.";
+        : lastRosterHubError || "Roster refresh did not complete. Check your sign-in.";
     }
 
     function signOutFromRosterHub() {

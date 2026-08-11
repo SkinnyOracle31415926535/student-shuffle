@@ -384,7 +384,16 @@
       session = await refreshSession({ ...session, expiresAt: 0 });
       result = await request();
     }
-    if (!result.response.ok) throw new Error("Official roster could not be loaded.");
+    if (!result.response.ok) {
+      if (result.response.status === 401) {
+        clearSession();
+        throw new Error("Roster Hub sign-in expired. Sign in again.");
+      }
+      if (result.response.status === 403) {
+        throw new Error("This Roster Hub account is not allowed to read the official roster.");
+      }
+      throw new Error(`Official roster request failed (${result.response.status}).`);
+    }
     const snapshot = parseOfficialRosterRows(result.body);
     if (!snapshot) return { snapshot: null, changed: false };
     const prior = loadCachedOfficialRoster();
