@@ -1293,7 +1293,7 @@
 
     .statusbar {
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: 1fr auto auto;
       gap: 6px;
       align-items: center;
       padding: 5px 7px;
@@ -2267,7 +2267,6 @@
       <footer class="statusbar">
         <div id="statusMessage" class="status-cell">Ready.</div>
         <div id="savedMessage" class="status-cell">Local roster memory: on</div>
-        <button id="appSyncButton" type="button" class="app-sync-button">Sync &amp; backup</button>
         <button id="soundToggle" type="button" class="sound-toggle" aria-pressed="true" title="Mute sound">
           <span class="icon" aria-hidden="true">S</span>
           <span id="soundLabel">Sound on</span>
@@ -3473,6 +3472,7 @@
     window.SemanticAppSync.install({
       appId: "student-shuffle",
       appName: "Student Shuffle",
+      showOpenButton: false,
       storage: window.StudentShuffleStorage
     });
   </script>

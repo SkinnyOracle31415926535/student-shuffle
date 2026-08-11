@@ -54,7 +54,7 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
-  function makeUi(appName) {
+  function makeUi(appName, showOpenButton = true) {
     const open = document.createElement('button');
     open.type = 'button';
     open.className = 'ryan-semantic-sync-open';
@@ -74,7 +74,8 @@
     style.textContent = `
       .ryan-semantic-sync-open{position:fixed!important;left:12px!important;bottom:12px!important;z-index:2147482998!important;min-height:42px!important;padding:8px 12px!important;border:2px solid #102117!important;border-radius:7px!important;background:#d7f0b7!important;color:#102117!important;box-shadow:3px 3px 0 #102117!important;font:700 14px/1.15 Tahoma,Verdana,Arial,sans-serif!important;letter-spacing:.02em!important;cursor:pointer!important}.ryan-semantic-sync-open:focus-visible,.ryan-semantic-sync-dialog button:focus-visible{outline:3px solid #1677ff!important;outline-offset:2px!important}.ryan-semantic-sync-dialog{z-index:2147482999!important;width:min(700px,calc(100vw - 24px))!important;max-width:700px!important;max-height:calc(100vh - 24px)!important;margin:auto!important;padding:0!important;border:0!important;border-radius:12px!important;background:#f5f8ee!important;color:#102117!important;box-shadow:0 18px 60px rgba(0,0,0,.48)!important;font:16px/1.45 Tahoma,Verdana,Arial,sans-serif!important}.ryan-semantic-sync-dialog::backdrop{background:rgba(0,0,0,.62)!important}.ryan-semantic-sync-card{padding:18px!important}.ryan-semantic-sync-card header{display:flex!important;justify-content:space-between!important;gap:16px!important;align-items:flex-start!important;padding-bottom:12px!important;border-bottom:2px solid #a8be9a!important}.ryan-semantic-sync-card h2,.ryan-semantic-sync-card h3,.ryan-semantic-sync-card p{margin:0!important;color:#102117!important;text-align:left!important}.ryan-semantic-sync-card h2{font-size:24px!important}.ryan-semantic-sync-card h3{font-size:17px!important}.ryan-semantic-sync-card small{font-weight:700!important;letter-spacing:.09em!important}.ryan-semantic-sync-card button{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:40px!important;padding:8px 11px!important;border:2px solid #102117!important;border-radius:6px!important;background:#d7f0b7!important;color:#102117!important;font:700 14px/1.2 Tahoma,Verdana,Arial,sans-serif!important;cursor:pointer!important}.ryan-semantic-sync-card header button{min-width:36px!important;font-size:24px!important}.ryan-semantic-sync-status,.ryan-semantic-sync-card section{margin-top:13px!important;padding:12px!important;border:1px solid #8ba377!important;border-radius:7px!important;background:#fff!important}.ryan-semantic-sync-actions{display:flex!important;flex-wrap:wrap!important;gap:9px!important;margin-top:15px!important}.ryan-semantic-conflict{display:grid!important;gap:7px!important;margin-top:10px!important;padding-top:10px!important;border-top:1px solid #cad8be!important}.ryan-semantic-conflict-actions{display:flex!important;flex-wrap:wrap!important;gap:6px!important}.ryan-semantic-conflict small{color:#34503c!important}@media(max-width:520px){.ryan-semantic-sync-open{left:8px!important;bottom:8px!important}.ryan-semantic-sync-card{padding:14px!important}}`;
     document.head.append(style);
-    document.body.append(open, dialog);
+    document.body.append(dialog);
+    if (showOpenButton) document.body.append(open);
     const status = dialog.querySelector('[data-status]');
     const sync = dialog.querySelector('[data-sync]');
     const conflicts = dialog.querySelector('[data-conflicts]');
@@ -138,7 +139,7 @@
       }
       return { name, adapter, fixed, schemaVersion: adapter.schemaVersion || 1 };
     });
-    const ui = makeUi(options.appName);
+    const ui = makeUi(options.appName, options.showOpenButton !== false);
     let state = readState(options.appId);
     let running = false;
     let queued = false;
