@@ -2366,11 +2366,7 @@
       </div>
       <form id="rosterHubForm" class="class-dialog-body">
         <p class="editing-class-name">OFFICIAL ROSTER · READ ONLY</p>
-        <p id="rosterHubNote" class="class-editor-note" role="status">Connect this device to the private official roster.</p>
-        <label for="rosterHubUrl">Supabase project URL</label>
-        <input id="rosterHubUrl" autocomplete="url" inputmode="url" placeholder="https://your-project.supabase.co" required>
-        <label for="rosterHubPublicKey">Supabase publishable key</label>
-        <input id="rosterHubPublicKey" autocomplete="off" spellcheck="false" placeholder="sb_publishable_…" required>
+        <p id="rosterHubNote" class="class-editor-note" role="status">This device is ready to sign in to the private official roster.</p>
         <label for="rosterHubEmail">Roster Hub email</label>
         <input id="rosterHubEmail" autocomplete="username" inputmode="email" placeholder="you@example.com">
         <label for="rosterHubPassword">Roster Hub password</label>
@@ -2379,7 +2375,7 @@
         <div class="class-dialog-actions">
           <button id="refreshRosterHub" type="button" class="secondary">Refresh roster</button>
           <button id="signOutRosterHub" type="button" class="secondary">Sign out</button>
-          <button type="submit" class="primary">Save &amp; sign in</button>
+          <button type="submit" class="primary">Sign in</button>
         </div>
       </form>
     </section>
@@ -2438,8 +2434,6 @@
     const rosterHubDialog = document.getElementById("rosterHubDialog");
     const rosterHubForm = document.getElementById("rosterHubForm");
     const closeRosterHub = document.getElementById("closeRosterHub");
-    const rosterHubUrl = document.getElementById("rosterHubUrl");
-    const rosterHubPublicKey = document.getElementById("rosterHubPublicKey");
     const rosterHubEmail = document.getElementById("rosterHubEmail");
     const rosterHubPassword = document.getElementById("rosterHubPassword");
     const rosterHubNote = document.getElementById("rosterHubNote");
@@ -3145,24 +3139,17 @@
 
     function openRosterHub() {
       rosterHubInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : rosterHubButton;
-      const config = window.StudentShuffleRosterHub.loadConfig();
-      rosterHubUrl.value = config?.projectUrl || "";
-      rosterHubPublicKey.value = config?.publishableKey || "";
       rosterHubPassword.value = "";
       rosterHubNote.textContent = window.StudentShuffleRosterHub.loadSession()
         ? "Signed in on this device. Refresh to load the latest official roster."
-        : "Enter the project details and your Roster Hub sign-in for this device.";
+        : "Sign in to the private official roster on this device.";
       if (!rosterHubDialog.open) rosterHubDialog.showModal();
-      window.requestAnimationFrame(() => rosterHubUrl.focus());
+      window.requestAnimationFrame(() => rosterHubEmail.focus());
     }
 
     async function saveAndSignInToRosterHub(event) {
       event.preventDefault();
       try {
-        window.StudentShuffleRosterHub.saveConfig({
-          projectUrl: rosterHubUrl.value,
-          publishableKey: rosterHubPublicKey.value
-        });
         if (rosterHubEmail.value.trim() || rosterHubPassword.value) {
           await window.StudentShuffleRosterHub.signIn(rosterHubEmail.value, rosterHubPassword.value);
           rosterHubPassword.value = "";
@@ -3184,7 +3171,7 @@
       const loaded = await refreshOfficialRoster({ announce: true });
       rosterHubNote.textContent = loaded
         ? "Official roster is current on this device."
-        : "Roster refresh did not complete. Check the project details and sign-in.";
+        : "Roster refresh did not complete. Check your sign-in.";
     }
 
     function signOutFromRosterHub() {

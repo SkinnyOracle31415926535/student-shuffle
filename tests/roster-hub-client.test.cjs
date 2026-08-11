@@ -81,6 +81,13 @@ test('official rows are validated, grouped by Student Shuffle key, and preserve 
   ]), /invalid official roster/);
 });
 
+test('Roster Hub is preconfigured for this private project on a new device', () => {
+  const { api } = loadClient();
+  const config = api.loadConfig();
+  assert.equal(config.projectUrl, 'https://cojrcavdfdusjdtqajwk.supabase.co');
+  assert.match(config.publishableKey, /^sb_publishable_/);
+});
+
 test('an app-created student is a browser-local extra and never changes the official snapshot', () => {
   const { api, localStorage } = loadClient();
   const official = [{ id: 'vault-fabian', displayName: 'Fabian Fernandes', official: true, local: false }];
@@ -116,7 +123,7 @@ test('a local student whose name later becomes official is not duplicated or mer
 test('official roster loading uses an authenticated GET and only updates the official cache after validation', async () => {
   const calls = [];
   const { api, localStorage } = loadClient({
-    'student-shuffle-roster-hub-config-v1': JSON.stringify({
+    'student-shuffle-roster-hub-config-v2': JSON.stringify({
       version: 1,
       projectUrl: 'https://example.supabase.co',
       publishableKey: 'sb_publishable_example',

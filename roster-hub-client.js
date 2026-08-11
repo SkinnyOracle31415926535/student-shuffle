@@ -1,12 +1,17 @@
 (() => {
   "use strict";
 
-  const CONFIG_KEY = "student-shuffle-roster-hub-config-v1";
+  const CONFIG_KEY = "student-shuffle-roster-hub-config-v2";
   const SESSION_KEY = "student-shuffle-roster-hub-session-v1";
   const CACHE_KEY = "student-shuffle-roster-hub-official-cache-v1";
   const LOCAL_EXTRAS_KEY = "student-random-order-local-extras-v1";
   const LOCAL_HIDDEN_KEY = "student-random-order-local-hidden-students-v1";
   const CACHE_VERSION = 1;
+  const DEFAULT_CONFIG = Object.freeze({
+    version: CACHE_VERSION,
+    projectUrl: "https://cojrcavdfdusjdtqajwk.supabase.co",
+    publishableKey: "sb_publishable_-mPsLb0mQl9nn1DyKh3HfQ_XQUZ_fGl"
+  });
   const SESSION_REFRESH_MARGIN_MS = 60_000;
   const MAX_TEXT_LENGTH = 240;
 
@@ -57,7 +62,7 @@
   }
 
   function loadConfig() {
-    return normalizeConfig(readJson(CONFIG_KEY));
+    return normalizeConfig(readJson(CONFIG_KEY)) || DEFAULT_CONFIG;
   }
 
   function saveConfig(value) {
