@@ -75,6 +75,16 @@ test('official rows are validated, grouped by Student Shuffle key, and preserve 
       display_name: 'Ethan Grinberg',
       ordinal: 1,
     },
+    {
+      source_revision: 4,
+      published_at: '2026-08-11T17:00:00.000Z',
+      class_key: 'tiny-tumbles-thursday-1100',
+      lesson_plan_class: 'Tiny Tumbles',
+      app_keys: {},
+      student_key: 'tiny-student',
+      display_name: 'Tiny Student',
+      ordinal: 1,
+    },
   ]);
 
   assert.equal(snapshot.revision, 4);
@@ -85,6 +95,16 @@ test('official rows are validated, grouped by Student Shuffle key, and preserve 
   assert.throws(() => api.parseOfficialRosterRows([
     { ...snapshot.classes[0], source_revision: 4 },
   ]), /invalid official roster/);
+  assert.equal(api.parseOfficialRosterRows([{
+    source_revision: 4,
+    published_at: '2026-08-11T17:00:00.000Z',
+    class_key: 'tiny-tumbles-thursday-1100',
+    lesson_plan_class: 'Tiny Tumbles',
+    app_keys: {},
+    student_key: 'tiny-student',
+    display_name: 'Tiny Student',
+    ordinal: 1,
+  }]), null);
 });
 
 test('Roster Hub is preconfigured for this private project on a new device', () => {
@@ -222,7 +242,7 @@ test('official roster loading uses an authenticated GET and only updates the off
   const result = await api.loadOfficialRoster();
   assert.equal(result.snapshot.revision, 7);
   assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /^https:\/\/example\.supabase\.co\/rest\/v1\/official_roster_current\?/);
+  assert.match(calls[0].url, /^https:\/\/example\.supabase\.co\/rest\/v1\/official_roster_student_shuffle_current\?/);
   assert.equal(calls[0].options.method, undefined);
   assert.equal(calls[0].options.headers.Authorization, 'Bearer access-token');
   assert.equal(calls[0].options.headers.apikey, 'sb_publishable_example');

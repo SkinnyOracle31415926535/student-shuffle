@@ -321,10 +321,12 @@
       if (!plainObject(row) || !Number.isSafeInteger(row.source_revision) || row.source_revision < 1 ||
           !cleanText(row.published_at, 80) || !cleanText(row.class_key) ||
           !cleanText(row.lesson_plan_class, 160) || !plainObject(row.app_keys) ||
-          !cleanText(row.app_keys["student-shuffle"]) || !cleanText(row.student_key) ||
-          !cleanText(row.display_name, 160) || !Number.isSafeInteger(row.ordinal) || row.ordinal < 1) {
+          !cleanText(row.student_key) || !cleanText(row.display_name, 160) ||
+          !Number.isSafeInteger(row.ordinal) || row.ordinal < 1) {
         throw new Error("Roster Hub returned an invalid official roster.");
       }
+      const key = cleanText(row.app_keys["student-shuffle"]);
+      if (!key) continue;
       if (revision === null) {
         revision = row.source_revision;
         updatedAt = row.published_at;
@@ -332,7 +334,6 @@
       if (revision !== row.source_revision || updatedAt !== row.published_at) {
         throw new Error("Roster Hub returned mixed roster revisions.");
       }
-      const key = row.app_keys["student-shuffle"];
       let classEntry = classes.get(key);
       if (!classEntry) {
         classEntry = {
@@ -349,6 +350,7 @@
       }
       classEntry.members.push({ id: row.student_key, displayName: row.display_name, official: true, local: false, ordinal: row.ordinal });
     }
+    if (!classes.size) return null;
     const snapshot = {
       version: CACHE_VERSION,
       revision,
@@ -370,7 +372,7 @@
       order: "class_key.asc,ordinal.asc"
     });
     const request = () => requestJson(
-      `${config.projectUrl}/rest/v1/official_roster_current?${parameters.toString()}`,
+      `${config.projectUrl}/rest/v1/official_roster_student_shuffle_current?${parameters.toString()}`,
       {
         headers: {
           apikey: config.publishableKey,
