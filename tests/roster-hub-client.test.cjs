@@ -132,6 +132,28 @@ test('an invitation callback creates a device session, clears its URL secret, an
   assert.equal(api.hasPendingInvite(), false);
 });
 
+test('a password-recovery callback uses the same safe password-setup path', async () => {
+  const location = {
+    hash: '#access_token=one-time-access&expires_in=3600&refresh_token=one-time-refresh&type=recovery',
+    pathname: '/',
+    search: '',
+  };
+  const { api } = loadClient({}, async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      access_token: 'recovery-access-token',
+      refresh_token: 'recovery-refresh-token',
+      expires_in: 3600,
+      user: { id: '00000000-0000-0000-0000-000000000003' },
+    }),
+  }), location);
+
+  assert.equal(await api.acceptInviteRedirect(), true);
+  assert.equal(location.hash, '');
+  assert.equal(api.hasPendingInvite(), true);
+});
+
 test('an app-created student is a browser-local extra and never changes the official snapshot', () => {
   const { api, localStorage } = loadClient();
   const official = [{ id: 'vault-fabian', displayName: 'Fabian Fernandes', official: true, local: false }];

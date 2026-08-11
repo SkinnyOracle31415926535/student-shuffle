@@ -215,7 +215,8 @@
     const hash = typeof window.location?.hash === "string" ? window.location.hash : "";
     if (!hash) return false;
     const parameters = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-    if (parameters.get("type") !== "invite") return false;
+    const callbackType = parameters.get("type");
+    if (callbackType !== "invite" && callbackType !== "recovery") return false;
     const refreshToken = cleanText(parameters.get("refresh_token"), 16_384);
     clearAuthCallbackHash();
     if (!refreshToken) throw new Error("The roster invitation could not be completed. Use a new invitation link.");
