@@ -3,6 +3,7 @@
 
   const CONFIG_KEY = "student-shuffle-roster-hub-config-v2";
   const SESSION_KEY = "student-shuffle-roster-hub-session-v1";
+  const PENDING_INVITE_KEY = "student-shuffle-roster-hub-pending-invite-v1";
   const CACHE_KEY = "student-shuffle-roster-hub-official-cache-v1";
   const LOCAL_EXTRAS_KEY = "student-random-order-local-extras-v1";
   const LOCAL_HIDDEN_KEY = "student-random-order-local-hidden-students-v1";
@@ -100,6 +101,26 @@
     } catch (_error) {
       // The next successful sign-in can replace a storage entry that cannot be removed now.
     }
+    clearPendingInvite();
+  }
+
+  function hasPendingInvite() {
+    const value = readJson(PENDING_INVITE_KEY);
+    return plainObject(value) && value.version === CACHE_VERSION && value.pending === true;
+  }
+
+  function savePendingInvite() {
+    if (!writeJson(PENDING_INVITE_KEY, { version: CACHE_VERSION, pending: true })) {
+      throw new Error("The roster invitation could not be saved on this device.");
+    }
+  }
+
+  function clearPendingInvite() {
+    try {
+      window.localStorage.removeItem(PENDING_INVITE_KEY);
+    } catch (_error) {
+      // A successful password setup can still replace this state on the next visit.
+    }
   }
 
   function sessionFromAuthPayload(value) {
@@ -178,6 +199,67 @@
       throw new Error("Roster Hub sign-in expired. Sign in again.");
     }
     return saveSession(refreshed);
+  }
+
+  function clearAuthCallbackHash() {
+    const location = window.location;
+    if (!location) return;
+    const cleanPath = `${location.pathname || "/"}${location.search || ""}`;
+    if (typeof window.history?.replaceState === "function") {
+      window.history.replaceState(null, "", cleanPath);
+    }
+    location.hash = "";
+  }
+
+  async function acceptInviteRedirect() {
+    const hash = typeof window.location?.hash === "string" ? window.location.hash : "";
+    if (!hash) return false;
+    const parameters = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+    if (parameters.get("type") !== "invite") return false;
+    const refreshToken = cleanText(parameters.get("refresh_token"), 16_384);
+    clearAuthCallbackHash();
+    if (!refreshToken) throw new Error("The roster invitation could not be completed. Use a new invitation link.");
+
+    const config = loadConfig();
+    const { response, body } = await requestJson(
+      `${config.projectUrl}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          apikey: config.publishableKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      }
+    );
+    const session = sessionFromAuthPayload(body);
+    if (!response.ok || !session) throw new Error("The roster invitation could not be completed. Use a new invitation link.");
+    saveSession(session);
+    savePendingInvite();
+    return true;
+  }
+
+  async function setPassword(password) {
+    if (typeof password !== "string" || !password) {
+      throw new Error("Choose a Roster Hub password first.");
+    }
+    const config = loadConfig();
+    const session = await refreshSession();
+    const { response } = await requestJson(
+      `${config.projectUrl}/auth/v1/user`,
+      {
+        method: "PUT",
+        headers: {
+          apikey: config.publishableKey,
+          Authorization: `Bearer ${session.accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ password })
+      }
+    );
+    if (!response.ok) throw new Error("Roster Hub could not save that password.");
+    clearPendingInvite();
+    return session;
   }
 
   function normalizeMember(value) {
@@ -434,6 +516,7 @@
   window.StudentShuffleRosterHub = Object.freeze({
     configKey: CONFIG_KEY,
     sessionKey: SESSION_KEY,
+    pendingInviteKey: PENDING_INVITE_KEY,
     cacheKey: CACHE_KEY,
     localExtrasKey: LOCAL_EXTRAS_KEY,
     localHiddenKey: LOCAL_HIDDEN_KEY,
@@ -442,6 +525,9 @@
     loadSession,
     clearSession,
     signIn,
+    hasPendingInvite,
+    acceptInviteRedirect,
+    setPassword,
     loadCachedOfficialRoster,
     loadOfficialRoster,
     loadLocalExtras,

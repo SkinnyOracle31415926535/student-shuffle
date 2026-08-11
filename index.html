@@ -2367,7 +2367,7 @@
       <form id="rosterHubForm" class="class-dialog-body">
         <p class="editing-class-name">OFFICIAL ROSTER · READ ONLY</p>
         <p id="rosterHubNote" class="class-editor-note" role="status">This device is ready to sign in to the private official roster.</p>
-        <label for="rosterHubEmail">Roster Hub email</label>
+        <label id="rosterHubEmailLabel" for="rosterHubEmail">Roster Hub email</label>
         <input id="rosterHubEmail" autocomplete="username" inputmode="email" placeholder="you@example.com">
         <label for="rosterHubPassword">Roster Hub password</label>
         <input id="rosterHubPassword" type="password" autocomplete="current-password" placeholder="Only stored by Supabase sign-in">
@@ -2375,7 +2375,7 @@
         <div class="class-dialog-actions">
           <button id="refreshRosterHub" type="button" class="secondary">Refresh roster</button>
           <button id="signOutRosterHub" type="button" class="secondary">Sign out</button>
-          <button type="submit" class="primary">Sign in</button>
+          <button id="rosterHubSubmit" type="submit" class="primary">Sign in</button>
         </div>
       </form>
     </section>
@@ -2434,11 +2434,13 @@
     const rosterHubDialog = document.getElementById("rosterHubDialog");
     const rosterHubForm = document.getElementById("rosterHubForm");
     const closeRosterHub = document.getElementById("closeRosterHub");
+    const rosterHubEmailLabel = document.getElementById("rosterHubEmailLabel");
     const rosterHubEmail = document.getElementById("rosterHubEmail");
     const rosterHubPassword = document.getElementById("rosterHubPassword");
     const rosterHubNote = document.getElementById("rosterHubNote");
     const refreshRosterHub = document.getElementById("refreshRosterHub");
     const signOutRosterHub = document.getElementById("signOutRosterHub");
+    const rosterHubSubmit = document.getElementById("rosterHubSubmit");
     const shuffleStudents = document.getElementById("shuffleStudents");
     const shuffleLauncher = document.getElementById("shuffleLauncher");
     const orderList = document.getElementById("orderList");
@@ -2475,6 +2477,7 @@
     let classData = null;
     let officialRoster = null;
     let rosterHubInvoker = null;
+    let rosterHubInvitePending = false;
 
     function setCentralInteraction(group, update) {
       window.StudentShuffleStorage.setEditorState(group, update);
@@ -3137,20 +3140,39 @@
       }
     }
 
+    function renderRosterHubMode() {
+      rosterHubEmailLabel.hidden = rosterHubInvitePending;
+      rosterHubEmail.hidden = rosterHubInvitePending;
+      rosterHubPassword.autocomplete = rosterHubInvitePending ? "new-password" : "current-password";
+      rosterHubPassword.placeholder = rosterHubInvitePending
+        ? "Choose a password for this device"
+        : "Only stored by Supabase sign-in";
+      rosterHubSubmit.textContent = rosterHubInvitePending ? "Finish setup" : "Sign in";
+    }
+
     function openRosterHub() {
       rosterHubInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : rosterHubButton;
+      rosterHubInvitePending = window.StudentShuffleRosterHub.hasPendingInvite();
+      renderRosterHubMode();
       rosterHubPassword.value = "";
       rosterHubNote.textContent = window.StudentShuffleRosterHub.loadSession()
-        ? "Signed in on this device. Refresh to load the latest official roster."
+        ? (rosterHubInvitePending
+          ? "Invitation confirmed. Choose a password for this device."
+          : "Signed in on this device. Refresh to load the latest official roster.")
         : "Sign in to the private official roster on this device.";
       if (!rosterHubDialog.open) rosterHubDialog.showModal();
-      window.requestAnimationFrame(() => rosterHubEmail.focus());
+      window.requestAnimationFrame(() => (rosterHubInvitePending ? rosterHubPassword : rosterHubEmail).focus());
     }
 
     async function saveAndSignInToRosterHub(event) {
       event.preventDefault();
       try {
-        if (rosterHubEmail.value.trim() || rosterHubPassword.value) {
+        if (rosterHubInvitePending) {
+          await window.StudentShuffleRosterHub.setPassword(rosterHubPassword.value);
+          rosterHubInvitePending = false;
+          renderRosterHubMode();
+          rosterHubPassword.value = "";
+        } else if (rosterHubEmail.value.trim() || rosterHubPassword.value) {
           await window.StudentShuffleRosterHub.signIn(rosterHubEmail.value, rosterHubPassword.value);
           rosterHubPassword.value = "";
         } else if (!window.StudentShuffleRosterHub.loadSession()) {
@@ -3176,6 +3198,8 @@
 
     function signOutFromRosterHub() {
       window.StudentShuffleRosterHub.clearSession();
+      rosterHubInvitePending = false;
+      renderRosterHubMode();
       rosterHubPassword.value = "";
       rosterHubNote.textContent = "Signed out on this device. The last official cache stays available offline.";
       savedMessage.textContent = "Roster Hub signed out on this device";
@@ -3703,6 +3727,23 @@
         refreshOfficialRoster();
       }
     });
+
+    async function openRosterHubInvitation() {
+      try {
+        const imported = await window.StudentShuffleRosterHub.acceptInviteRedirect();
+        rosterHubInvitePending = imported || window.StudentShuffleRosterHub.hasPendingInvite();
+        if (!rosterHubInvitePending) return;
+        renderRosterHubMode();
+        rosterHubPassword.value = "";
+        rosterHubNote.textContent = "Invitation confirmed. Choose a password for this device.";
+        if (!rosterHubDialog.open) rosterHubDialog.showModal();
+        window.requestAnimationFrame(() => rosterHubPassword.focus());
+      } catch (_error) {
+        setStatus("Roster Hub invitation needs a new link.");
+        savedMessage.textContent = "Roster Hub invitation could not be completed";
+      }
+    }
+    void openRosterHubInvitation();
   </script>
   <script src="semantic-app-sync.js"></script>
   <script>

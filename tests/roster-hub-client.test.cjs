@@ -32,7 +32,7 @@ class FakeStorage {
 
 function loadClient(initial = {}, fetchImpl = async () => {
   throw new Error('unexpected fetch');
-}) {
+}, location = { hash: '', pathname: '/', search: '' }) {
   const localStorage = new FakeStorage(initial);
   const window = {
     localStorage,
@@ -40,6 +40,12 @@ function loadClient(initial = {}, fetchImpl = async () => {
       randomUUID: () => '01234567-89ab-cdef-0123-456789abcdef',
     },
     fetch: fetchImpl,
+    location,
+    history: {
+      replaceState: (_state, _title, path) => {
+        location.replacedPath = path;
+      },
+    },
   };
   const context = vm.createContext({ window, URL, URLSearchParams, Uint32Array, Date, JSON, console });
   new vm.Script(source, { filename: 'roster-hub-client.js' }).runInContext(context);
@@ -86,6 +92,44 @@ test('Roster Hub is preconfigured for this private project on a new device', () 
   const config = api.loadConfig();
   assert.equal(config.projectUrl, 'https://cojrcavdfdusjdtqajwk.supabase.co');
   assert.match(config.publishableKey, /^sb_publishable_/);
+});
+
+test('an invitation callback creates a device session, clears its URL secret, and accepts a password', async () => {
+  const calls = [];
+  const location = {
+    hash: '#access_token=one-time-access&expires_in=3600&refresh_token=one-time-refresh&type=invite',
+    pathname: '/student-shuffle',
+    search: '',
+  };
+  const { api, localStorage } = loadClient({}, async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes('grant_type=refresh_token')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          access_token: 'fresh-access-token',
+          refresh_token: 'fresh-refresh-token',
+          expires_in: 3600,
+          user: { id: '00000000-0000-0000-0000-000000000002' },
+        }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  }, location);
+
+  assert.equal(await api.acceptInviteRedirect(), true);
+  assert.equal(location.hash, '');
+  assert.equal(location.replacedPath, '/student-shuffle');
+  assert.equal(api.hasPendingInvite(), true);
+  assert.match(localStorage.getItem(api.sessionKey), /fresh-access-token/);
+
+  await api.setPassword('private-roster-password');
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.method, 'PUT');
+  assert.match(calls[1].url, /\/auth\/v1\/user$/);
+  assert.equal(calls[1].options.headers.Authorization, 'Bearer fresh-access-token');
+  assert.equal(api.hasPendingInvite(), false);
 });
 
 test('an app-created student is a browser-local extra and never changes the official snapshot', () => {
