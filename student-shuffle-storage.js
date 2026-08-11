@@ -10,6 +10,8 @@
     classes: 'student-random-order-classes-v1',
     selectedClass: 'student-random-order-selected-class-v1',
     hiddenStudents: 'student-random-order-hidden-students-v1',
+    localExtras: 'student-random-order-local-extras-v1',
+    localHiddenStudents: 'student-random-order-local-hidden-students-v1',
     sound: 'student-random-order-sound-v1',
   });
   const RAW_BACKUP_KEYS = Object.freeze([
@@ -17,6 +19,8 @@
     STORAGE_KEYS.classes,
     STORAGE_KEYS.selectedClass,
     STORAGE_KEYS.hiddenStudents,
+    STORAGE_KEYS.localExtras,
+    STORAGE_KEYS.localHiddenStudents,
     STORAGE_KEYS.sound,
   ]);
   const CENTRAL_KEYS = Object.freeze([

@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --check transfer-theme.js && node --check semantic-app-sync.js && node --check worker/index.js && node --test tests/transfer-theme.test.cjs && npm run build"
+    "test": "node --check transfer-theme.js && node --check semantic-app-sync.js && node --check roster-hub-client.js && node --check student-shuffle-storage.js && node --check worker/index.js && node --test tests/transfer-theme.test.cjs tests/student-shuffle-storage.test.cjs tests/roster-hub-client.test.cjs && npm run build"
   }
 }

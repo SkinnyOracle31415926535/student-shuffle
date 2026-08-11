@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <script src="https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/roster-auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#128a4c">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -976,6 +975,30 @@
       font-weight: 700;
     }
 
+    .local-extras-manager {
+      display: grid;
+      gap: 6px;
+      padding: 7px;
+      color: #18351f;
+      background: #d8e8b3;
+      border-top: 2px solid #638468;
+      border-left: 2px solid #638468;
+      border-right: 2px solid #efffea;
+      border-bottom: 2px solid #efffea;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .local-extras-manager p {
+      margin: 0;
+    }
+
+    .local-extras-manager button {
+      justify-content: flex-start;
+      min-height: 30px;
+      font-size: 12px;
+    }
+
     .class-dialog-actions {
       display: flex;
       justify-content: flex-end;
@@ -1564,7 +1587,7 @@
 
     .class-actions {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 7px;
       margin-top: 7px;
     }
@@ -1942,6 +1965,10 @@
         grid-template-columns: 1fr;
       }
 
+      .class-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .titlebar {
         align-items: flex-start;
       }
@@ -2244,6 +2271,7 @@
               <div class="class-actions">
                 <button id="newClass" type="button" class="primary">New class</button>
                 <button id="editClass" type="button" class="secondary">Edit class</button>
+                <button id="rosterHubButton" type="button" class="secondary">Roster Hub</button>
               </div>
               <div id="classRosterState" class="preset-state" role="status">Choose a class roster.</div>
               <form id="quickAddForm" class="quick-add">
@@ -2324,40 +2352,68 @@
         <p id="editingClassName" class="editing-class-name"></p>
         <label for="rosterText">Students</label>
         <textarea id="rosterText" spellcheck="false" placeholder="One student per line"></textarea>
+        <div id="localExtrasManager" class="local-extras-manager" hidden></div>
         <p id="classEditorNote" class="class-editor-note" role="status">Changes save automatically.</p>
       </div>
     </section>
   </dialog>
 
+  <dialog id="rosterHubDialog" class="class-dialog" aria-labelledby="rosterHubDialogTitle" aria-describedby="rosterHubNote">
+    <section class="class-dialog-panel">
+      <div class="queue-dialog-titlebar">
+        <h2 id="rosterHubDialogTitle" class="queue-dialog-title">Roster Hub</h2>
+        <button id="closeRosterHub" type="button" class="dialog-close" aria-label="Close Roster Hub" title="Close Roster Hub">×</button>
+      </div>
+      <form id="rosterHubForm" class="class-dialog-body">
+        <p class="editing-class-name">OFFICIAL ROSTER · READ ONLY</p>
+        <p id="rosterHubNote" class="class-editor-note" role="status">Connect this device to the private official roster.</p>
+        <label for="rosterHubUrl">Supabase project URL</label>
+        <input id="rosterHubUrl" autocomplete="url" inputmode="url" placeholder="https://your-project.supabase.co" required>
+        <label for="rosterHubPublicKey">Supabase publishable key</label>
+        <input id="rosterHubPublicKey" autocomplete="off" spellcheck="false" placeholder="sb_publishable_…" required>
+        <label for="rosterHubEmail">Roster Hub email</label>
+        <input id="rosterHubEmail" autocomplete="username" inputmode="email" placeholder="you@example.com">
+        <label for="rosterHubPassword">Roster Hub password</label>
+        <input id="rosterHubPassword" type="password" autocomplete="current-password" placeholder="Only stored by Supabase sign-in">
+        <p class="class-editor-note">The Hub only reads official students. Students you add in Student Shuffle remain on this device.</p>
+        <div class="class-dialog-actions">
+          <button id="refreshRosterHub" type="button" class="secondary">Refresh roster</button>
+          <button id="signOutRosterHub" type="button" class="secondary">Sign out</button>
+          <button type="submit" class="primary">Save &amp; sign in</button>
+        </div>
+      </form>
+    </section>
+  </dialog>
+
   <script src="student-shuffle-storage.js"></script>
+  <script src="roster-hub-client.js"></script>
   <script>
     const STORAGE_KEY = "student-random-order-roster-v1";
     const CLASS_STORAGE_KEY = "student-random-order-classes-v1";
     const SELECTED_CLASS_KEY = "student-random-order-selected-class-v1";
     const HIDDEN_STORAGE_KEY = "student-random-order-hidden-students-v1";
     const SOUND_STORAGE_KEY = "student-random-order-sound-v1";
-    const SHARED_ROSTER_API_URL = "https://student-shuffle-shared.ryan-666-mp3.chatgpt.site/api/rosters";
-    const SHARED_SYNC_INTERVAL_MS = 15000;
+    const ROSTER_HUB_SYNC_INTERVAL_MS = 30000;
     const BUILT_IN_CLASSES = [
       {
         key: "builtin:level-3-boys",
         name: "boys level 3",
-        names: ["Fabian Fernandes", "Ethan Grinberg", "Weston Schomaker", "Daniel Shatil", "Ariel Shatil", "Logan Huynh"]
+        names: []
       },
       {
         key: "builtin:boys-nga",
         name: "boys nga",
-        names: ["Benjamin Bowie Christopher", "Kenneth Chan", "Maxon Edington", "Cody Goodman", "Zayd Lakhani", "Adam Pagsolingan", "Ryan Pagsolingan", "Oliver Rodriguez"]
+        names: []
       },
       {
         key: "builtin:boys-level-4",
         name: "boys level 4",
-        names: ["Maksim Bychkov", "Jace Jackson", "Aarush Kini", "Owen Lavrich", "Kaleb Jax Muolic", "Uladzislau Samoilenka"]
+        names: []
       },
       {
         key: "builtin:advanced-boys",
         name: "boys advanced",
-        names: ["Ildar Bekov", "Dominic Chan"]
+        names: []
       }
     ];
 
@@ -2367,6 +2423,7 @@
     const quickAddForm = document.getElementById("quickAddForm");
     const newClassButton = document.getElementById("newClass");
     const editClassButton = document.getElementById("editClass");
+    const rosterHubButton = document.getElementById("rosterHubButton");
     const newClassDialog = document.getElementById("newClassDialog");
     const newClassForm = document.getElementById("newClassForm");
     const newClassName = document.getElementById("newClassName");
@@ -2377,6 +2434,17 @@
     const closeClassEditor = document.getElementById("closeClassEditor");
     const editingClassName = document.getElementById("editingClassName");
     const classEditorNote = document.getElementById("classEditorNote");
+    const localExtrasManager = document.getElementById("localExtrasManager");
+    const rosterHubDialog = document.getElementById("rosterHubDialog");
+    const rosterHubForm = document.getElementById("rosterHubForm");
+    const closeRosterHub = document.getElementById("closeRosterHub");
+    const rosterHubUrl = document.getElementById("rosterHubUrl");
+    const rosterHubPublicKey = document.getElementById("rosterHubPublicKey");
+    const rosterHubEmail = document.getElementById("rosterHubEmail");
+    const rosterHubPassword = document.getElementById("rosterHubPassword");
+    const rosterHubNote = document.getElementById("rosterHubNote");
+    const refreshRosterHub = document.getElementById("refreshRosterHub");
+    const signOutRosterHub = document.getElementById("signOutRosterHub");
     const shuffleStudents = document.getElementById("shuffleStudents");
     const shuffleLauncher = document.getElementById("shuffleLauncher");
     const orderList = document.getElementById("orderList");
@@ -2400,6 +2468,7 @@
     const SUMMON_DURATION_MS = 1350;
     let order = [];
     let hiddenStudents = new Set();
+    let localHiddenStudents = new Set();
     let audioContext = null;
     let soundEnabled = true;
     let isSummoning = false;
@@ -2410,10 +2479,8 @@
     let classEditorInvoker = null;
     let classEditorDirty = false;
     let classData = null;
-    let sharedRosterReady = false;
-    let sharedRosterRevision = 0;
-    let sharedRosterSaveTimer = null;
-    let sharedRosterSaveInProgress = false;
+    let officialRoster = null;
+    let rosterHubInvoker = null;
 
     function setCentralInteraction(group, update) {
       window.StudentShuffleStorage.setEditorState(group, update);
@@ -2625,6 +2692,10 @@
       return name.trim().toLowerCase();
     }
 
+    function rosterMemberKey(member) {
+      return studentKey(member.id || "");
+    }
+
     function normalizeRosterNames(names) {
       const seen = new Set();
       return (Array.isArray(names) ? names : [])
@@ -2638,8 +2709,22 @@
         });
     }
 
+    function officialClassesForSelect() {
+      if (officialRoster?.classes?.length) return officialRoster.classes;
+      return BUILT_IN_CLASSES.map((item) => ({ key: item.key, name: item.name, members: [] }));
+    }
+
+    function getRosterEntries() {
+      return getClassRoster(classSelect.value)?.members || [];
+    }
+
     function getRoster() {
-      return normalizeRosterNames(rosterText.value.split(/\r?\n/));
+      return getRosterEntries().map((member) => member.displayName);
+    }
+
+    function isHidden(member) {
+      const key = rosterMemberKey(member);
+      return member.local ? localHiddenStudents.has(key) : hiddenStudents.has(key);
     }
 
     function setRoster(names) {
@@ -2651,19 +2736,52 @@
     }
 
     function getPresentRoster() {
-      return getRoster().filter((name) => !hiddenStudents.has(studentKey(name)));
+      return getRosterEntries()
+        .filter((member) => !isHidden(member))
+        .map((member) => member.displayName);
+    }
+
+    function selectedOfficialMemberKeys() {
+      return new Set(
+        getRosterEntries()
+          .filter((member) => member.official)
+          .map(rosterMemberKey)
+      );
+    }
+
+    function selectedLocalMemberKeys() {
+      return new Set(
+        getRosterEntries()
+          .filter((member) => member.local)
+          .map(rosterMemberKey)
+      );
     }
 
     function loadHiddenStudents() {
       hiddenStudents = new Set(
         window.StudentShuffleStorage.loadHiddenStudentKeys([]).map(studentKey)
       );
+      localHiddenStudents = new Set(
+        window.StudentShuffleRosterHub.loadLocalHiddenStudentKeys(classSelect.value).map(studentKey)
+      );
       pruneHiddenStudents();
     }
 
     function saveHiddenStudents() {
-      const selectedClassKey = classSelect.value ||
-        window.StudentShuffleStorage.loadSelectedClassKey(BUILT_IN_CLASSES[0].key);
+      const selectedClassKey = classSelect.value || BUILT_IN_CLASSES[0].key;
+      const officialKeys = selectedOfficialMemberKeys();
+      const localKeys = selectedLocalMemberKeys();
+      hiddenStudents = new Set(Array.from(hiddenStudents).filter((key) => officialKeys.has(key)));
+      localHiddenStudents = new Set(Array.from(localHiddenStudents).filter((key) => localKeys.has(key)));
+      try {
+        window.StudentShuffleRosterHub.saveLocalHiddenStudentKeys(
+          selectedClassKey,
+          Array.from(localHiddenStudents)
+        );
+      } catch (error) {
+        savedMessage.textContent = "Local attendance memory unavailable";
+        return Promise.reject(error);
+      }
       const pending = window.StudentShuffleStorage.saveAttendance(
         selectedClassKey,
         Array.from(hiddenStudents)
@@ -2676,48 +2794,52 @@
     }
 
     function pruneHiddenStudents() {
-      const rosterKeys = new Set(getRoster().map(studentKey));
-      hiddenStudents = new Set(Array.from(hiddenStudents).filter((key) => rosterKeys.has(key)));
-      saveHiddenStudents();
+      const officialKeys = selectedOfficialMemberKeys();
+      const localKeys = selectedLocalMemberKeys();
+      hiddenStudents = new Set(Array.from(hiddenStudents).filter((key) => officialKeys.has(key)));
+      localHiddenStudents = new Set(Array.from(localHiddenStudents).filter((key) => localKeys.has(key)));
     }
 
     function renderAttendance() {
-      const roster = getRoster();
-      const present = getPresentRoster();
+      const roster = getRosterEntries();
+      const present = roster.filter((member) => !isHidden(member));
       attendanceList.innerHTML = "";
 
       if (!roster.length) {
         const empty = document.createElement("span");
         empty.className = "attendance-chip is-out";
-        empty.textContent = "No roster yet";
+        empty.textContent = officialRoster ? "No active students" : "Connect Roster Hub";
         attendanceList.appendChild(empty);
-        attendanceState.textContent = "Add students below.";
+        attendanceState.textContent = officialRoster
+          ? "This official class has no active students."
+          : "Connect Roster Hub or add a local student below.";
         return;
       }
 
-      roster.forEach((name) => {
-        const key = studentKey(name);
-        const isOut = hiddenStudents.has(key);
+      roster.forEach((member) => {
+        const key = rosterMemberKey(member);
+        const isOut = isHidden(member);
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "attendance-chip" + (isOut ? " is-out" : "");
         chip.setAttribute("aria-pressed", isOut ? "true" : "false");
-        chip.title = isOut ? "Show " + name + " for today" : "Hide " + name + " for today";
+        chip.title = isOut ? "Show " + member.displayName + " for today" : "Hide " + member.displayName + " for today";
 
         const mark = document.createElement("span");
         mark.className = "mark";
         mark.textContent = isOut ? "x" : "+";
         chip.appendChild(mark);
-        chip.appendChild(document.createTextNode(name));
+        chip.appendChild(document.createTextNode(member.displayName));
         chip.addEventListener("click", () => {
           beginAttendanceAction(true);
-          if (hiddenStudents.has(key)) {
-            hiddenStudents.delete(key);
-            setStatus(name + " is in today.");
+          const hiddenSet = member.local ? localHiddenStudents : hiddenStudents;
+          if (hiddenSet.has(key)) {
+            hiddenSet.delete(key);
+            setStatus(member.displayName + " is in today.");
             playSound("attendanceIn");
           } else {
-            hiddenStudents.add(key);
-            setStatus(name + " hidden for today.");
+            hiddenSet.add(key);
+            setStatus(member.displayName + " hidden for today.");
             playSound("attendanceOut");
           }
           order = [];
@@ -2754,6 +2876,7 @@
 
       BUILT_IN_CLASSES.forEach((item) => {
         if (Array.isArray(overrides[item.key])) {
+          // Preserve the old browser-only data for recovery, but never treat it as an official roster.
           normalized[item.key] = normalizeRosterNames(overrides[item.key]);
         }
       });
@@ -2803,122 +2926,8 @@
       const normalized = normalizeClassData(data);
       classData = normalized;
       const cached = cacheClassData(normalized);
-      if (sharedRosterReady) {
-        savedMessage.textContent = "Saving shared class roster...";
-        scheduleSharedClassSave();
-      }
+      if (cached) savedMessage.textContent = "Local class saved on this device";
       return cached;
-    }
-
-    function setSharedRosterControls(disabled) {
-      newClassButton.disabled = disabled;
-      editClassButton.disabled = disabled;
-      studentName.disabled = disabled;
-      addStudent.disabled = disabled;
-    }
-
-    function readSharedClassPayload(payload) {
-      if (!payload || typeof payload !== "object" || !payload.state || !Number.isInteger(payload.revision) || payload.revision < 1) return null;
-      return { classData: normalizeClassData(payload.state), revision: payload.revision };
-    }
-
-    async function loadSharedClassData({ announce = false } = {}) {
-      if (classEditorDialog.open || sharedRosterSaveInProgress || sharedRosterSaveTimer !== null) return;
-      const rosterHeaders = window.StudentShuffleRosterAuth?.getAuthHeaders?.()
-        || window.StudentShuffleRosterAuth?.getWriteHeaders?.();
-      if (!rosterHeaders) {
-        sharedRosterReady = false;
-        setSharedRosterControls(false);
-        savedMessage.textContent = "Connect roster access to load shared classes; using this browser's saved copy";
-        if (announce) setStatus("Shared rosters stay private until roster access is connected.");
-        return;
-      }
-      try {
-        const response = await fetch(SHARED_ROSTER_API_URL, {
-          cache: "no-store",
-          headers: rosterHeaders
-        });
-        if (!response.ok) throw new Error("Shared roster request failed");
-        const shared = readSharedClassPayload(await response.json());
-        if (!shared) throw new Error("Shared roster response is invalid");
-
-        const sharedDataChanged = !sharedRosterReady || sharedRosterRevision !== shared.revision;
-        classData = shared.classData;
-        sharedRosterRevision = shared.revision;
-        sharedRosterReady = true;
-        cacheClassData(classData);
-        setSharedRosterControls(false);
-        if (sharedDataChanged) {
-          renderClassSelect(classSelect.value || loadSelectedClassKey());
-          loadSelectedClass({ announce: false, resetAttendance: false });
-          savedMessage.textContent = "Shared class rosters synced";
-        }
-        if (announce) setStatus("Shared class rosters loaded.");
-      } catch (error) {
-        setSharedRosterControls(false);
-        savedMessage.textContent = "Shared rosters unavailable; using this browser's saved copy";
-      }
-    }
-
-    function scheduleSharedClassSave() {
-      if (!sharedRosterReady) return;
-      if (sharedRosterSaveTimer !== null) window.clearTimeout(sharedRosterSaveTimer);
-      sharedRosterSaveTimer = window.setTimeout(syncSharedClassData, 350);
-    }
-
-    async function syncSharedClassData() {
-      sharedRosterSaveTimer = null;
-      if (!sharedRosterReady || sharedRosterSaveInProgress) return;
-
-      const storageHeaders = window.StudentShuffleRosterAuth?.getAuthHeaders?.()
-        || window.StudentShuffleRosterAuth?.getWriteHeaders?.();
-      if (!storageHeaders) {
-        savedMessage.textContent = "Connect roster editing before changing class rosters";
-        return;
-      }
-
-      sharedRosterSaveInProgress = true;
-      const snapshot = JSON.stringify(loadClassData());
-      try {
-        const response = await fetch(SHARED_ROSTER_API_URL, {
-          method: "PUT",
-          cache: "no-store",
-          headers: {
-            ...storageHeaders,
-            "Content-Type": "application/json",
-            "If-Match": "\"" + sharedRosterRevision + "\""
-          },
-          body: snapshot
-        });
-
-        if (response.status === 412) {
-          savedMessage.textContent = "Another browser changed the class roster. Loading the latest copy.";
-          sharedRosterSaveInProgress = false;
-          await loadSharedClassData({ announce: true });
-          return;
-        }
-        if (response.status === 401) {
-          savedMessage.textContent = "Connect roster editing before changing class rosters";
-          return;
-        }
-        if (!response.ok) throw new Error("Shared roster save failed");
-        const shared = readSharedClassPayload(await response.json());
-        if (!shared) throw new Error("Shared roster save response is invalid");
-        sharedRosterRevision = shared.revision;
-        if (snapshot === JSON.stringify(loadClassData())) {
-          classData = shared.classData;
-          cacheClassData(classData);
-        } else {
-          scheduleSharedClassSave();
-        }
-        savedMessage.textContent = "Class changes saved for every browser";
-        if (classEditorDialog.open) classEditorNote.textContent = "Saved on every browser.";
-      } catch (error) {
-        savedMessage.textContent = "Shared save failed; retrying when the page reconnects";
-        sharedRosterSaveTimer = window.setTimeout(syncSharedClassData, 5000);
-      } finally {
-        sharedRosterSaveInProgress = false;
-      }
     }
 
     function loadSelectedClassKey() {
@@ -2926,9 +2935,10 @@
     }
 
     function saveSelectedClassKey(key) {
+      const officialKeys = selectedOfficialMemberKeys();
       const pending = window.StudentShuffleStorage.saveAttendance(
         key,
-        Array.from(hiddenStudents)
+        Array.from(hiddenStudents).filter((student) => officialKeys.has(student))
       );
       void pending.catch((error) => {
         console.error("Could not save the selected Student Shuffle class.", error);
@@ -2940,27 +2950,67 @@
     function getClassRoster(key) {
       if (!key) return null;
       const classData = loadClassData();
+      const hubClass = officialRoster?.classes?.find((entry) => entry.key === key);
+      if (hubClass) {
+        const merged = window.StudentShuffleRosterHub.mergeMembers(
+          hubClass.members,
+          window.StudentShuffleRosterHub.loadLocalExtras(key)
+        );
+        return {
+          key,
+          name: hubClass.name,
+          members: merged.members,
+          conflicts: merged.conflicts,
+          custom: false,
+          official: true,
+          pending: false
+        };
+      }
 
-      if (key.startsWith("builtin:")) {
-        const item = BUILT_IN_CLASSES.find((entry) => entry.key === key);
-        if (!item) return null;
-        const names = Array.isArray(classData.builtinOverrides[key]) ? classData.builtinOverrides[key] : item.names;
-        return { key, name: item.name, names: normalizeRosterNames(names), custom: false };
+      const fallback = BUILT_IN_CLASSES.find((entry) => entry.key === key);
+      if (fallback) {
+        const merged = window.StudentShuffleRosterHub.mergeMembers(
+          [],
+          window.StudentShuffleRosterHub.loadLocalExtras(key)
+        );
+        return {
+          key,
+          name: fallback.name,
+          members: merged.members,
+          conflicts: merged.conflicts,
+          custom: false,
+          official: true,
+          pending: true
+        };
       }
 
       if (!key.startsWith("custom:")) return null;
       const className = key.slice("custom:".length);
       const saved = classData.custom[className];
       if (!Array.isArray(saved)) return null;
-      return { key, name: className, names: normalizeRosterNames(saved), custom: true };
+      return {
+        key,
+        name: className,
+        members: normalizeRosterNames(saved).map((displayName) => ({
+          id: "local:custom:" + encodeURIComponent(className) + ":" + studentKey(displayName),
+          displayName,
+          local: true,
+          official: false
+        })),
+        conflicts: [],
+        custom: true,
+        official: false,
+        pending: false
+      };
     }
 
     function renderClassSelect(preferredKey) {
-      const current = preferredKey || classSelect.value || BUILT_IN_CLASSES[0].key;
+      const officialClasses = officialClassesForSelect();
+      const current = preferredKey || classSelect.value || officialClasses[0]?.key || "";
       const classes = loadClassData().custom;
       classSelect.innerHTML = "";
 
-      BUILT_IN_CLASSES.forEach((item) => {
+      officialClasses.forEach((item) => {
         const option = document.createElement("option");
         option.value = item.key;
         option.textContent = item.name;
@@ -2975,7 +3025,7 @@
       });
 
       classSelect.value = current;
-      if (classSelect.value !== current) classSelect.value = BUILT_IN_CLASSES[0].key;
+      if (classSelect.value !== current) classSelect.value = officialClasses[0]?.key || classSelect.options[0]?.value || "";
       renderClassPreview();
     }
 
@@ -2986,8 +3036,16 @@
         return;
       }
 
-      const count = selected.names.length;
-      classRosterState.textContent = selected.name + " · " + count + " " + (count === 1 ? "student" : "students");
+      const count = selected.members.length;
+      if (selected.pending) {
+        classRosterState.textContent = selected.name + " · connect Roster Hub for official students";
+        return;
+      }
+      const localCount = selected.members.filter((member) => member.local).length;
+      const conflictCount = selected.conflicts.length;
+      classRosterState.textContent = selected.name + " · " + count + " " + (count === 1 ? "student" : "students") +
+        (localCount ? " · " + localCount + " local" : "") +
+        (conflictCount ? " · " + conflictCount + " local name needs review" : "");
     }
 
     function resetOrderState() {
@@ -2999,13 +3057,15 @@
       const selected = getClassRoster(classSelect.value);
       if (!selected) return [];
 
+      if (!selected.custom) {
+        const currentNames = selected.members.map((member) => member.displayName);
+        if (syncTextarea) rosterText.value = currentNames.join("\n");
+        return currentNames;
+      }
+
       const normalized = normalizeRosterNames(names);
       const classData = loadClassData();
-      if (selected.custom) {
-        classData.custom[selected.name] = normalized;
-      } else {
-        classData.builtinOverrides[selected.key] = normalized;
-      }
+      classData.custom[selected.name] = normalized;
       saveClassData(classData);
 
       if (syncTextarea) rosterText.value = normalized.join("\n");
@@ -3027,9 +3087,13 @@
 
       if (resetAttendance) {
         hiddenStudents = new Set();
-        saveHiddenStudents();
+        localHiddenStudents = new Set();
+      } else {
+        localHiddenStudents = new Set(
+          window.StudentShuffleRosterHub.loadLocalHiddenStudentKeys(selected.key).map(studentKey)
+        );
       }
-      setRoster(selected.names);
+      setRoster(selected.members.map((member) => member.displayName));
       renderClassPreview();
       resetOrderState();
       saveSelectedClassKey(selected.key);
@@ -3039,10 +3103,101 @@
       }
     }
 
+    function applyOfficialRosterSnapshot(snapshot) {
+      officialRoster = snapshot;
+      const preferred = classSelect.value || loadSelectedClassKey();
+      renderClassSelect(preferred);
+      const selected = getClassRoster(classSelect.value);
+      if (selected) {
+        rosterText.value = selected.members.map((member) => member.displayName).join("\n");
+        localHiddenStudents = new Set(
+          window.StudentShuffleRosterHub.loadLocalHiddenStudentKeys(selected.key).map(studentKey)
+        );
+      }
+      pruneHiddenStudents();
+      renderClassPreview();
+      renderAttendance();
+      updateStats();
+    }
+
+    async function refreshOfficialRoster({ announce = false } = {}) {
+      try {
+        const result = await window.StudentShuffleRosterHub.loadOfficialRoster();
+        if (!result.snapshot) {
+          savedMessage.textContent = "Roster Hub is connected; the first official roster has not published yet";
+          if (announce) setStatus("Waiting for the first official roster publish.");
+          return false;
+        }
+        applyOfficialRosterSnapshot(result.snapshot);
+        savedMessage.textContent = "Official roster revision " + result.snapshot.revision + " loaded";
+        if (announce) setStatus(result.changed ? "Official roster updated." : "Official roster is current.");
+        return true;
+      } catch (error) {
+        const cached = window.StudentShuffleRosterHub.loadCachedOfficialRoster();
+        if (cached && !officialRoster) applyOfficialRosterSnapshot(cached);
+        savedMessage.textContent = cached
+          ? "Roster Hub unavailable; using this device's last official roster"
+          : "Roster Hub is not connected on this device";
+        if (announce) setStatus("Official roster could not be refreshed.");
+        return false;
+      }
+    }
+
+    function openRosterHub() {
+      rosterHubInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : rosterHubButton;
+      const config = window.StudentShuffleRosterHub.loadConfig();
+      rosterHubUrl.value = config?.projectUrl || "";
+      rosterHubPublicKey.value = config?.publishableKey || "";
+      rosterHubPassword.value = "";
+      rosterHubNote.textContent = window.StudentShuffleRosterHub.loadSession()
+        ? "Signed in on this device. Refresh to load the latest official roster."
+        : "Enter the project details and your Roster Hub sign-in for this device.";
+      if (!rosterHubDialog.open) rosterHubDialog.showModal();
+      window.requestAnimationFrame(() => rosterHubUrl.focus());
+    }
+
+    async function saveAndSignInToRosterHub(event) {
+      event.preventDefault();
+      try {
+        window.StudentShuffleRosterHub.saveConfig({
+          projectUrl: rosterHubUrl.value,
+          publishableKey: rosterHubPublicKey.value
+        });
+        if (rosterHubEmail.value.trim() || rosterHubPassword.value) {
+          await window.StudentShuffleRosterHub.signIn(rosterHubEmail.value, rosterHubPassword.value);
+          rosterHubPassword.value = "";
+        } else if (!window.StudentShuffleRosterHub.loadSession()) {
+          throw new Error("Enter the Roster Hub email and password to sign in.");
+        }
+        rosterHubNote.textContent = "Signed in. Loading the official roster…";
+        const loaded = await refreshOfficialRoster({ announce: true });
+        rosterHubNote.textContent = loaded
+          ? "Official roster is connected on this device."
+          : "Signed in, waiting for the first official roster publish.";
+      } catch (error) {
+        rosterHubNote.textContent = error instanceof Error ? error.message : "Roster Hub could not be connected.";
+      }
+    }
+
+    async function refreshRosterHubFromDialog() {
+      rosterHubNote.textContent = "Refreshing the official roster…";
+      const loaded = await refreshOfficialRoster({ announce: true });
+      rosterHubNote.textContent = loaded
+        ? "Official roster is current on this device."
+        : "Roster refresh did not complete. Check the project details and sign-in.";
+    }
+
+    function signOutFromRosterHub() {
+      window.StudentShuffleRosterHub.clearSession();
+      rosterHubPassword.value = "";
+      rosterHubNote.textContent = "Signed out on this device. The last official cache stays available offline.";
+      savedMessage.textContent = "Roster Hub signed out on this device";
+    }
+
     function saveToStorage(value = rosterText.value) {
       try {
         localStorage.setItem(STORAGE_KEY, value);
-        if (!classEditorDialog.open && !sharedRosterReady) savedMessage.textContent = "Roster saved locally";
+        if (!classEditorDialog.open) savedMessage.textContent = "Roster saved on this device";
       } catch (error) {
         savedMessage.textContent = "Local roster memory unavailable";
       }
@@ -3201,8 +3356,51 @@
 
     function classNameExists(name, classData) {
       const comparison = name.toLocaleLowerCase();
-      return BUILT_IN_CLASSES.some((item) => item.name.toLocaleLowerCase() === comparison) ||
+      return officialClassesForSelect().some((item) => item.name.toLocaleLowerCase() === comparison) ||
         Object.keys(classData.custom).some((className) => className.toLocaleLowerCase() === comparison);
+    }
+
+    function renderLocalExtrasManager(selected) {
+      localExtrasManager.replaceChildren();
+      localExtrasManager.hidden = !selected?.official;
+      if (!selected?.official) return;
+
+      const extras = window.StudentShuffleRosterHub.loadLocalExtras(selected.key);
+      const heading = document.createElement("p");
+      heading.textContent = extras.length
+        ? "Local-only students on this device"
+        : "No local-only students in this class.";
+      localExtrasManager.appendChild(heading);
+      extras.forEach((member) => {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "secondary";
+        remove.textContent = "Remove " + member.displayName + " (local)";
+        remove.addEventListener("click", () => {
+          try {
+            if (!window.StudentShuffleRosterHub.removeLocalExtra(selected.key, member.id)) return;
+            localHiddenStudents.delete(rosterMemberKey(member));
+            window.StudentShuffleRosterHub.saveLocalHiddenStudentKeys(
+              selected.key,
+              Array.from(localHiddenStudents)
+            );
+            const refreshed = getClassRoster(selected.key);
+            rosterText.value = refreshed.members.map((entry) => entry.displayName).join("\n");
+            renderLocalExtrasManager(refreshed);
+            renderClassPreview();
+            renderAttendance();
+            updateStats();
+            resetOrderState();
+            savedMessage.textContent = "Local student removed from this device";
+            setStatus(member.displayName + " removed from this device.");
+            playSound("delete");
+          } catch (error) {
+            setStatus("Could not remove that local student.");
+            playSound("error");
+          }
+        });
+        localExtrasManager.appendChild(remove);
+      });
     }
 
     function openNewClass() {
@@ -3225,11 +3423,15 @@
       beginAttendanceAction(false);
       classEditorInvoker = document.activeElement instanceof HTMLElement ? document.activeElement : editClassButton;
       editingClassName.textContent = selected.name;
-      rosterText.value = selected.names.join("\n");
-      classEditorNote.textContent = "Changes save automatically.";
+      rosterText.value = selected.members.map((member) => member.displayName).join("\n");
+      rosterText.disabled = !selected.custom;
+      renderLocalExtrasManager(selected);
+      classEditorNote.textContent = selected.custom
+        ? "Changes save on this device only."
+        : "Official students are managed by Roster Hub. Use Add for a student on this device only.";
       classEditorDirty = false;
       if (!classEditorDialog.open) classEditorDialog.showModal();
-      window.requestAnimationFrame(() => rosterText.focus());
+      window.requestAnimationFrame(() => (selected.custom ? rosterText : closeClassEditor).focus());
     }
 
     function closeWhenClickingBackdrop(dialog) {
@@ -3279,15 +3481,46 @@
         return;
       }
 
-      const roster = getRoster();
-      if (!roster.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
-        roster.push(name);
-        saveActiveClassRoster(roster, { syncTextarea: true });
-        setStatus("Added " + name + ".");
-        playSound("add");
-      } else {
-        setStatus(name + " is already on the roster.");
+      const selected = getClassRoster(classSelect.value);
+      if (!selected) {
+        setStatus("Choose a class first.");
         playSound("error");
+        return;
+      }
+
+      if (selected.official) {
+        try {
+          const result = window.StudentShuffleRosterHub.addLocalExtra(selected.key, name, selected.members);
+          if (!result.added) {
+            setStatus(name + " is already on this roster.");
+            playSound("error");
+            return;
+          }
+          const refreshed = getClassRoster(selected.key);
+          rosterText.value = refreshed.members.map((member) => member.displayName).join("\n");
+          renderClassPreview();
+          renderAttendance();
+          updateStats();
+          saveToStorage();
+          resetOrderState();
+          savedMessage.textContent = "Student added on this device only";
+          setStatus("Added " + name + " on this device only.");
+          playSound("add");
+        } catch (error) {
+          setStatus("Could not save that student on this device.");
+          playSound("error");
+        }
+      } else {
+        const roster = getRoster();
+        if (!roster.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
+          roster.push(name);
+          saveActiveClassRoster(roster, { syncTextarea: true });
+          setStatus("Added " + name + " on this device.");
+          playSound("add");
+        } else {
+          setStatus(name + " is already on the roster.");
+          playSound("error");
+        }
       }
 
       studentName.value = "";
@@ -3325,12 +3558,18 @@
     });
     newClassButton.addEventListener("click", openNewClass);
     editClassButton.addEventListener("click", openClassEditor);
+    rosterHubButton.addEventListener("click", openRosterHub);
     newClassForm.addEventListener("submit", createNewClass);
+    rosterHubForm.addEventListener("submit", saveAndSignInToRosterHub);
+    refreshRosterHub.addEventListener("click", refreshRosterHubFromDialog);
+    signOutRosterHub.addEventListener("click", signOutFromRosterHub);
     closeNewClass.addEventListener("click", () => newClassDialog.close());
     cancelNewClass.addEventListener("click", () => newClassDialog.close());
     closeClassEditor.addEventListener("click", () => classEditorDialog.close());
+    closeRosterHub.addEventListener("click", () => rosterHubDialog.close());
     closeWhenClickingBackdrop(newClassDialog);
     closeWhenClickingBackdrop(classEditorDialog);
+    closeWhenClickingBackdrop(rosterHubDialog);
     newClassDialog.addEventListener("close", () => {
       endAttendanceAction();
       const focusTarget = newClassInvoker;
@@ -3339,12 +3578,17 @@
     });
     classEditorDialog.addEventListener("close", () => {
       if (classEditorDirty) {
-        saveActiveClassRoster(getRoster(), { syncTextarea: true });
+        saveActiveClassRoster(normalizeRosterNames(rosterText.value.split(/\r?\n/)), { syncTextarea: true });
         classEditorDirty = false;
       }
       endAttendanceAction();
       const focusTarget = classEditorInvoker;
       classEditorInvoker = null;
+      if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
+    });
+    rosterHubDialog.addEventListener("close", () => {
+      const focusTarget = rosterHubInvoker;
+      rosterHubInvoker = null;
       if (focusTarget && document.contains(focusTarget)) focusTarget.focus();
     });
 
@@ -3380,10 +3624,12 @@
     });
 
     rosterText.addEventListener("input", () => {
+      const selected = getClassRoster(classSelect.value);
+      if (!selected?.custom) return;
       beginAttendanceAction(true);
       classEditorDirty = true;
-      saveActiveClassRoster(getRoster());
-      classEditorNote.textContent = "Saving for every browser...";
+      saveActiveClassRoster(normalizeRosterNames(rosterText.value.split(/\r?\n/)));
+      classEditorNote.textContent = "Saved on this device.";
     });
 
     soundToggle.addEventListener("click", () => {
@@ -3407,9 +3653,14 @@
       const remoteHidden = window.StudentShuffleStorage.loadHiddenStudentKeys([]);
       renderClassSelect(selectedKey);
       const selected = getClassRoster(classSelect.value);
-      if (selected) rosterText.value = selected.names.join("\n");
-      const rosterKeys = new Set(getRoster().map(studentKey));
-      hiddenStudents = new Set(remoteHidden.filter((key) => rosterKeys.has(key)));
+      if (selected) {
+        rosterText.value = selected.members.map((member) => member.displayName).join("\n");
+        localHiddenStudents = new Set(
+          window.StudentShuffleRosterHub.loadLocalHiddenStudentKeys(selected.key).map(studentKey)
+        );
+      }
+      hiddenStudents = new Set(remoteHidden.filter((key) => selectedOfficialMemberKeys().has(key)));
+      pruneHiddenStudents();
       order = [];
       renderClassPreview();
       renderAttendance();
@@ -3430,41 +3681,40 @@
       }
     });
 
-    let savedRoster = "";
-    try {
-      savedRoster = localStorage.getItem(STORAGE_KEY) || "";
-    } catch (error) {
-      savedMessage.textContent = "Local roster memory unavailable";
-    }
     classData = loadLocalClassData();
-    setSharedRosterControls(true);
+    officialRoster = window.StudentShuffleRosterHub.loadCachedOfficialRoster();
     const rememberedClassKey = loadSelectedClassKey();
     renderClassSelect(rememberedClassKey);
-    const restoredSelectedClass = rememberedClassKey && classSelect.value === rememberedClassKey;
     const initialClass = getClassRoster(classSelect.value);
-    rosterText.value = !restoredSelectedClass && savedRoster
-      ? savedRoster
-      : (initialClass ? initialClass.names.join("\n") : "");
+    rosterText.value = initialClass ? initialClass.members.map((member) => member.displayName).join("\n") : "";
 
     loadSoundPreference();
     loadHiddenStudents();
-    if (!restoredSelectedClass && savedRoster) {
-      saveActiveClassRoster(getRoster(), { syncTextarea: true });
-      savedMessage.textContent = "Loaded and saved your previous roster";
-    } else {
-      saveSelectedClassKey(classSelect.value);
-      renderClassPreview();
-      renderAttendance();
-      updateStats();
-    }
+    saveSelectedClassKey(classSelect.value);
+    renderClassPreview();
+    renderAttendance();
+    updateStats();
     renderAttendance();
     renderOrder();
-    setStatus("Loading shared class rosters...");
-    loadSharedClassData({ announce: true });
-    window.setInterval(() => loadSharedClassData(), SHARED_SYNC_INTERVAL_MS);
-    window.addEventListener("focus", () => loadSharedClassData());
-    window.addEventListener("student-shuffle-roster-authenticated", () => {
-      loadSharedClassData({ announce: true });
+    if (window.StudentShuffleRosterHub.loadConfig() && window.StudentShuffleRosterHub.loadSession()) {
+      setStatus("Loading official roster…");
+      refreshOfficialRoster({ announce: true });
+    } else if (officialRoster) {
+      setStatus("Using this device's last official roster.");
+      savedMessage.textContent = "Roster Hub sign-in is needed to refresh official students";
+    } else {
+      setStatus("Connect Roster Hub to load official students.");
+      savedMessage.textContent = "Official roster is not connected on this device";
+    }
+    window.setInterval(() => {
+      if (window.StudentShuffleRosterHub.loadConfig() && window.StudentShuffleRosterHub.loadSession()) {
+        refreshOfficialRoster();
+      }
+    }, ROSTER_HUB_SYNC_INTERVAL_MS);
+    window.addEventListener("focus", () => {
+      if (window.StudentShuffleRosterHub.loadConfig() && window.StudentShuffleRosterHub.loadSession()) {
+        refreshOfficialRoster();
+      }
     });
   </script>
   <script src="semantic-app-sync.js"></script>

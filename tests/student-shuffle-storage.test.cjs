@@ -98,6 +98,8 @@ const owned = {
   classes: 'student-random-order-classes-v1',
   selected: 'student-random-order-selected-class-v1',
   hidden: 'student-random-order-hidden-students-v1',
+  localExtras: 'student-random-order-local-extras-v1',
+  localHidden: 'student-random-order-local-hidden-students-v1',
   sound: 'student-random-order-sound-v1',
 };
 
@@ -117,6 +119,8 @@ test('central adapters read only selected class, hidden attendance, and sound', 
     [owned.classes]: '{"cache":"SHARED_CACHE_ONLY"}',
     [owned.selected]: 'builtin:boys-nga',
     [owned.hidden]: '["Kenneth Chan"]',
+    [owned.localExtras]: '{"version":1,"classes":{"builtin:boys-nga":[{"id":"local:one","displayName":"Local Student"}]}}',
+    [owned.localHidden]: '{"version":1,"classes":{"builtin:boys-nga":["local:one"]}}',
     [owned.sound]: 'off',
     unrelated: 'do-not-read',
   });
@@ -142,12 +146,14 @@ test('central adapters read only selected class, hidden attendance, and sound', 
   assert.ok(environment.locks.calls.every((name) => name === environment.api.aggregateLock));
 });
 
-test('exact raw backup contains all five owned keys and no unrelated storage', () => {
+test('exact raw backup contains every owned key and no unrelated storage', () => {
   const environment = loadStorage({
     [owned.roster]: 'ROSTER_RESPONSE_ONLY',
     [owned.classes]: '{"cache":"SHARED_CACHE_ONLY"}',
     [owned.selected]: 'builtin:boys-nga',
     [owned.hidden]: '["kenneth chan"]',
+    [owned.localExtras]: 'LOCAL_EXTRAS_ONLY',
+    [owned.localHidden]: 'LOCAL_HIDDEN_ONLY',
     [owned.sound]: 'off',
     unrelated: 'must-not-leave',
   });
@@ -155,9 +161,17 @@ test('exact raw backup contains all five owned keys and no unrelated storage', (
 
   assert.deepEqual(
     Array.from(backup.records, (record) => record.key),
-    [owned.roster, owned.classes, owned.selected, owned.hidden, owned.sound],
+    [
+      owned.roster,
+      owned.classes,
+      owned.selected,
+      owned.hidden,
+      owned.localExtras,
+      owned.localHidden,
+      owned.sound,
+    ],
   );
-  assert.match(JSON.stringify(backup), /ROSTER_RESPONSE_ONLY|SHARED_CACHE_ONLY/);
+  assert.match(JSON.stringify(backup), /ROSTER_RESPONSE_ONLY|SHARED_CACHE_ONLY|LOCAL_EXTRAS_ONLY|LOCAL_HIDDEN_ONLY/);
   assert.doesNotMatch(JSON.stringify(backup), /must-not-leave|unrelated/);
 });
 
@@ -169,6 +183,8 @@ test('local central saves preserve roster response data and shared roster cache 
     [owned.classes]: classes,
     [owned.selected]: 'builtin:boys-nga',
     [owned.hidden]: '[]',
+    [owned.localExtras]: '{"version":1,"classes":{"builtin:boys-nga":[{"id":"local:one"}]}}',
+    [owned.localHidden]: '{"version":1,"classes":{"builtin:boys-nga":["local:one"]}}',
     [owned.sound]: 'on',
   });
 
@@ -182,6 +198,8 @@ test('local central saves preserve roster response data and shared roster cache 
   assert.equal(environment.localStorage.getItem(owned.classes), classes);
   assert.equal(environment.localStorage.getItem(owned.selected), 'builtin:level-3-boys');
   assert.equal(environment.localStorage.getItem(owned.hidden), '["fabian fernandes"]');
+  assert.equal(environment.localStorage.getItem(owned.localExtras), '{"version":1,"classes":{"builtin:boys-nga":[{"id":"local:one"}]}}');
+  assert.equal(environment.localStorage.getItem(owned.localHidden), '{"version":1,"classes":{"builtin:boys-nga":["local:one"]}}');
   assert.equal(environment.localStorage.getItem(owned.sound), 'off');
 });
 
